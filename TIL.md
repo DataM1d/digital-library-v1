@@ -158,3 +158,74 @@ Phase 2: Security & Identity 2026-02-22
     Database: Verified the record exists with a $2a$14$ prefix, indicating a bcrypt algorithm with a cost factor of 14.
 
     Lesson: The json:"-" tag in the Go model is the MVP here. It allowed me to use the models.User struct to save the hash to the DB, but automatically stripped it out when sending the response back to the client.
+
+7. Login & JWT
+    Concept: Implemented the Login flow. Unlike registration, which creates data, login verifies data and issues a temporary pass.
+
+    Status Code: Successfully received 200 OK from Postman on the /login route.
+
+8. JWT Mastery
+    What is it: JWT is a stateless way to track users. The server does not have to remember session. It just trusts the token because it was signed with a Secret key.
+
+    Payload: I learned how to embed custom data inside the token. My tokens now carry the user_id and the role (Admin/User)
+
+    JWT.io Discovery: Pasting the token into jwt.io allows me to see the encoded data. It's a reminder that JWTs are not encrypted, only signed. Anyone can read the data, but no one can change it without the secret key.
+
+
+Phase 3: The Library Logic 2026-02-23
+
+1. Categories & Tags
+    Key concept, Many to many relationships: I learned that to link Posts and Tags without duplicating data, i need a Join table(post_tags). This table does not have its own content. It just holds the IDs of the two thing it is connecting.
+
+    Service Layer: I am moving logic out of the Handler. Now the Handler just hears the request, and the service decides if it is allowed.
+
+2. One to many relational
+    Categories: Every post belongs to exactly one category (e.g, "Synth", "Kung Fu").
+
+    Tags: A post can have multiple labels (e.g, "Vintage", "70s", "Vibe").
+
+3. The join table
+    post_tags: I learned that you can not put a "list" of tags inside a single column in a standard SQL table. Instead, i created bridge table that stores pairs of post_id and tag_id.
+
+    Lesson: Many to many relationships require three labels. The two entities and the join table that connects them.
+
+4. Service layer pattern
+    Concept: Introduced a new layer between the Handler and the Repository. internal/service.
+
+    Why: Handlers should only care about HTTP (reading JSON, sending status codes). Repositories should only care about SQL. The Service is the brain that holds the business rules.
+
+    Admin only rule: : I implemented a check in the PostService that looks at the user's role. If they aren't an admin, the service rejects the creation before it ever touches the database.
+
+    React Comparison: This is like moving logic out of a component and into a dedicated custom Hook or Context provider to keep the UI dumb and the logic centralized.
+
+5. ACID transactions (db.begin)
+    What: Used SQL transactions to handle post creation.
+
+    Why: Creating a post now involves multiple steps.
+        1. Insert the post.
+        2. Insert/Find tags.
+        3. Link them in the join table.
+
+    The all or nothing rule: If step 3 fails, I don't want step 1 to stay in the database. tx.Rollback() ensures that if any part fails, the whole operation is canceled, keeping the database clean and atomic.
+
+6. Advanced SQL & The N+1 Problem
+    The Challenge: Fetching a post along with its category name and all its tags
+
+    LEFT JOIN: Used LEFT JOIN categories to bring in the category name. I learned that if a post has no category, SQL returns NULL, so I used sql.NullString in Go to handle that safely without crashing.
+
+    N+1 Discovery: I learned that running a separate query for tags inside a loop for posts is called the N+1 problem. It's fine for my library now, but for a massive app, I would need more advanced SQL (like ARRAY_AGG) to fetch everything in one single query.
+
+7. Dependency Injection Refactoring
+    The Wiring: I had to update main.go to follow a new order: DB -> Repository -> Service -> Handler.
+
+    esson: If I change the  Constructor of a handler (e.g., making NewPostHandler take a Service instead of a Repo), I must update the wiring in main.go. This is called dependency injection. Passing the tools a function needs to do its job.
+
+8. Centralized Security (The .env Win)
+    What: Moved the JWT_SECRET out of the code and into the .env file.
+
+    Why: Previously, i had the secret key typed in two different files. if i changed one and forgot the other the gatekeeper would break.
+
+    The fix: Both the GenerateToken utility adn the AuthMiddleware now use os.Getenv("JWT_SECRET").
+
+    Lesson: Never hardcode secrets. Centralizing them in .env makes the app more secure and prevents key mismatch bugs that are a nightmare to debug.
+    

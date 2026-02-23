@@ -6,10 +6,12 @@ import (
 	"os"
 
 	"github.com/DataM1d/digital-library/internal/handlers"
+	customMiddleware "github.com/DataM1d/digital-library/internal/middleware"
 	"github.com/DataM1d/digital-library/internal/repository"
+	"github.com/DataM1d/digital-library/internal/service"
 	"github.com/DataM1d/digital-library/pkg/database"
 	"github.com/go-chi/chi/v5"
-	"github.com/go-chi/chi/v5/middleware"
+	chimiddleware "github.com/go-chi/chi/v5/middleware"
 	"github.com/joho/godotenv"
 )
 
@@ -32,23 +34,28 @@ func main() {
 	defer db.Close()
 
 	postRepo := repository.NewPostRepository(db)
-
-	postHandler := handlers.NewPostHandler(postRepo)
-
 	userRepo := repository.NewUserRepository(db)
 
+	postService := service.NewPostService(postRepo)
+
+	postHandler := handlers.NewPostHandler(postService)
 	authHandler := handlers.NewAuthHandler(userRepo)
 
 	r := chi.NewRouter()
-	r.Use(middleware.Logger)
+	r.Use(chimiddleware.Logger)
 
 	r.Get("/health", func(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte(`{"status": "ok"}`))
 	})
 
-	r.Get("/posts", postHandler.GetPosts)
-
 	r.Post("/register", authHandler.Register)
+	r.Post("/login", authHandler.Login)
+
+	r.Group(func(r chi.Router) {
+		r.Use(customMiddleware.AuthMiddleware)
+		r.Post("/posts", postHandler.CreatePost)
+		r.Get("/posts", postHandler.GetPosts)
+	})
 
 	log.Println("Server starting on :8080...")
 	http.ListenAndServe(":8080", r)
