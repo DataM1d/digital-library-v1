@@ -315,4 +315,42 @@ Phase 2: Public Discovery V2 Core 2026-02-25
 
     Lesson: Scanning a NULL database value into a standard Go string will cause  a runtime error. `NullString` provides a `.String` field and `.Valid` boolean to handle this safety.
 
+Phase 3: The Social Layer 2026-02-25
+
+1. The custom type Context Trap
+    What: I learned that Go's `context.Value()` is keyed by type, not just the string value.
+
+    Why: If the middleware saves a value using type contextKey string, but the handler tries to retrieve it using a plain string, it returns nil.
+
+    Lesson: Use exported constants for context keys across packages to ensure type safety. This prevents shadowing or accidental overwrites from third party libraries.
+
+2. Relational Data Integrity
+    What: Implemented `ON DELETE CASCADE` on the comments table.
+
+    Why: In a relational DB, you do not want `orphaned` data. If a post is deleted, its comments should die with it automatically at the database level.
+
+    Lesson: Let the database handle cleanup logic whenever possible, its faster and more reliable than writing manual cleanup code in Go.
+
+3. The COALESCE Pattern for Joins
+    What: Used `COALESCE(u.username, 'unknown_user')` in a SQL JOIN.
+
+    Why: Go's string type cannot hold a NULL value. if a join returns a null column (like a user without a username), `rows.Scan()` will crash the entire request.
+
+    Lesson: Use `COALASECE` in SQL to provide a default fallback value directly in the result set, making your Go code much more resillient to imperfect data.
+
+4. Unique Constraint Defense
+    What: Attempted to bulk fill usernames and hit a `unique_violation`.
+
+    Why: A `UNIQUE` constraint on a column does not just block duplicates during `INSERT`, it blocks them during `UPDATE` too.
+
+    Fix: Used SQL string concatenation `('user_' || id)` to generate unique temporary data based on the primary Key.
+
+5. The silent error 
+    What: The API returned 500 but the terminal showed nothing until i looked at the panic trace.
+
+    Why: The `chi.Middleware.Recoverer` catches panics to keep the server from crashing, but it can hide the why if you are not looking at the console logs.
+
+    Lesson: When a request fails in under 1ms with a 500 error, its almost always a Go panic(like nil pointer or bad assertion) rather than a slow database error.
+
+    
 

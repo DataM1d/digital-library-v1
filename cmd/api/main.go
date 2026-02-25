@@ -41,6 +41,10 @@ func main() {
 	postHandler := handlers.NewPostHandler(postService)
 	authHandler := handlers.NewAuthHandler(userRepo)
 
+	commentRepo := repository.NewCommentRepository(db)
+	commentService := service.NewCommentService(commentRepo)
+	commentHandler := handlers.NewCommentHandler(commentService)
+
 	r := chi.NewRouter()
 
 	r.Use(chimiddleware.Logger)
@@ -58,12 +62,14 @@ func main() {
 	r.Group(func(r chi.Router) {
 		r.Get("/posts", postHandler.GetPosts)
 		r.Get("/posts/{id}", postHandler.GetPosts)
+		r.Get("/posts/{id}/comments", commentHandler.GetComments)
 	})
 
 	r.Group(func(r chi.Router) {
 		r.Use(customMiddleware.AuthMiddleware)
 		r.Post("/posts", postHandler.CreatePost)
-		r.Post("/posts/{id}like", postHandler.ToggleLike)
+		r.Post("/posts/{id}/like", postHandler.ToggleLike)
+		r.Post("/posts/{id}/comments", commentHandler.CreateComment)
 	})
 
 	log.Println("Server starting on :8080...")
