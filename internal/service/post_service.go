@@ -25,7 +25,7 @@ func (s *PostService) CreateLibraryEntry(post *models.Post, userRole string) err
 	return s.repo.Create(post)
 }
 
-func (s *PostService) GetAllPosts(category string, search string, page, limit int) ([]models.Post, error) {
+func (s *PostService) GetAllPosts(category string, search string, tags []string, page, limit int) ([]models.Post, error) {
 	if limit <= 0 {
 		limit = 10
 	}
@@ -34,7 +34,7 @@ func (s *PostService) GetAllPosts(category string, search string, page, limit in
 	}
 	offset := (page - 1) * limit
 
-	return s.repo.GetAll(category, search, limit, offset)
+	return s.repo.GetAll(category, search, tags, limit, offset)
 }
 
 func (s *PostService) ToggleLike(userID, postID int) (bool, error) {

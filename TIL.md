@@ -1,3 +1,5 @@
+VERSION 1 
+
 Phase 1: The Foundation 2026-02-19
 
 1. Project initialization & Go Modules
@@ -228,4 +230,89 @@ Phase 3: The Library Logic 2026-02-23
     The fix: Both the GenerateToken utility adn the AuthMiddleware now use os.Getenv("JWT_SECRET").
 
     Lesson: Never hardcode secrets. Centralizing them in .env makes the app more secure and prevents key mismatch bugs that are a nightmare to debug.
-    
+
+9. Relational Mastery 2026-02-23
+    The type safety trap: Discovered that Go context keys are type specific contextKey("role") is invisible if yoiu search for the string "role".
+
+    Scheam synchronization: Fixed SQLSTATE 42703 by ensuring the PostgresSQL table columns matched the Go struct fields exactly.
+
+    Statelles reality: Mastered the JWT lifecycle roles must be updated in the DB before logging in to get a valid admin token.
+
+
+Phase 4: Interaction & Polish 2026-02-23
+
+1. Dynamic SQl & Search (ILIKE)
+    What: Implemented a keyword search that scans both title and content.
+
+    The 1=1 trick: Used Where 1=1 as a base for SQL queries. This allowed me to dinamically append AND clauses for categories or search terns without worrying if it was the first filter or the second.
+
+    Pattern matching: Learned that ILIKe is the superpower of Postgres it performs case insensitive searches so that "PHASE" and "phase" return the sam results.
+
+    Lesson: Percent signs are wildcards. Searching for %logc% finds "logic", "logical", and "biologic".
+
+2. The many to mahy likes system
+    Logic: Created a likes table to track the relationship between users and posts.
+
+    The unique constraint: Applied UNIQUE(user_id, post_id) at the database level.
+
+    Why: This is defensive programming. Even if my Go code has a bug and tries to save a duplicate like, the Database acts as the fonal shield and rejects the double entry.
+
+
+    Toggle pattern: insted of a simple Add button, i built a ToggleLike function. It checks if a record exists, if it does, it deletes it (unlike), if it does not it creates it (like).
+
+3. Subqueries for Performance
+    Optimization: Instead of fecthing every like and counting them in Go. I used a SQL subquery: (SELECT COUNT(*) FROM likes WHERE post_id = p.id) as like_count.
+
+    The win: The database returns the total number as a single integer. This is much faster than sending thousands of like rows  over the network just to count them.
+
+4. Architectural Boundaries Repo trap
+    Struggle: Encountered a compiler error by accidentally putting HTTP handler code into the repository file. 
+
+    Lesson: Repositories are database only. They should not know that the interent exists. They only take simple data types (int, strings) and return data or errors. Handlers are the translators rhat turn HTTP requests into those simple types.
+
+5. Dependency chain update
+    Flow: Finalized the 4 step feature workflow:
+        1. Model: Update the struct (e.g, add LikeCount)
+
+        2. Repositroy: Write the SQL (e.g, ToggleLike)
+
+        3. Service: Add business logic (e.g, s.repo.ToggleLike)
+
+        4. Handler: Map the URL and UserId to the Service.
+
+    Refinement: Learned that the UserID should be pulled from the r.Context() (placed there by middleware) to ensre a user can only like as themselves.
+
+
+VERSION 2 
+
+Phase 1: Transitioning 2026-02-24
+
+1.  Public Discovery Architecture
+    Public vs Private Routing: I learned how to use chi.Router groups to separate public
+    Read operations from protected write operations. This is crucial for building apps where discovery is free but interaction requires identity.
+
+    Database Schema Evolution:
+    I implemented my first migration by adding image_url and slug columns. Slugs are essential for SEO and making URLs more human-readable (e.g, /posts/my-cool-photo vs /posts/3).
+
+    The Power of BlurHash:
+    Learned that modern apps don't just load images they store a blur_hash (a small string) to show a beautiful blurred placeholder while the high-res file downloads, preventing layout shifts.
+
+    Relational Logic for Comments: Built a one to many relationship where a comment is tied to both a user_id and post_id, with ON DELETE CASCADE to ensure that if a post is deleted, its comments vanish too (data integrity).
+
+Phase 2: Public Discovery V2 Core 2026-02-25
+
+1. SQL Query Dynamics & The 'Any' Operator
+    Problem: How to filter a post by multiple tags passed in a URL query string (e.g, `?tags=vintage&tags=synth`).
+
+    Solution: Used the Postgres `ANY($1)` operator combined with `lib/pq.Array()`.
+
+    Lesson: Standard SQL `IN` clauses are hard to build dynamically with `database/sql`. Passing a slice  as a single argument using `pq.Array` is the "Go-to" way for Postgres.
+
+2. Advanced Scans with Nullable Columns
+    Discovery: When joining tables (like `LEFT JOIN categories`), some columns might be NULL.
+
+    Solution: Used `sql.Nullstring` during `rows.Scan`.
+
+    Lesson: Scanning a NULL database value into a standard Go string will cause  a runtime error. `NullString` provides a `.String` field and `.Valid` boolean to handle this safety.
+
+

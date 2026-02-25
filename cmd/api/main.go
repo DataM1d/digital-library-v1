@@ -45,8 +45,10 @@ func main() {
 
 	r.Use(chimiddleware.Logger)
 	r.Use(chimiddleware.StripSlashes)
+	r.Use(chimiddleware.Recoverer)
 
 	r.Get("/health", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
 		w.Write([]byte(`{"status": "ok"}`))
 	})
 
@@ -54,12 +56,17 @@ func main() {
 	r.Post("/login", authHandler.Login)
 
 	r.Group(func(r chi.Router) {
+		r.Get("/posts", postHandler.GetPosts)
+		r.Get("/posts/{id}", postHandler.GetPosts)
+	})
+
+	r.Group(func(r chi.Router) {
 		r.Use(customMiddleware.AuthMiddleware)
 		r.Post("/posts", postHandler.CreatePost)
-		r.Get("/posts", postHandler.GetPosts)
-		r.Post("/posts/{id}/like", postHandler.ToggleLike)
+		r.Post("/posts/{id}like", postHandler.ToggleLike)
 	})
 
 	log.Println("Server starting on :8080...")
+	log.Printf("V2 Roadmap: Public routes enabled. Ready for endless scroll.")
 	http.ListenAndServe(":8080", r)
 }

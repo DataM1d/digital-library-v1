@@ -44,13 +44,22 @@ func (h *PostHandler) CreatePost(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *PostHandler) GetPosts(w http.ResponseWriter, r *http.Request) {
-	category := r.URL.Query().Get("category")
 	search := r.URL.Query().Get("search")
+	category := r.URL.Query().Get("category")
+
+	tags := r.URL.Query()["tags"]
 
 	page, _ := strconv.Atoi(r.URL.Query().Get("page"))
-	limit, _ := strconv.Atoi(r.URL.Query().Get("limit"))
+	if page < 1 {
+		page = 1
+	}
 
-	posts, err := h.postService.GetAllPosts(category, search, page, limit)
+	limit, _ := strconv.Atoi(r.URL.Query().Get("limit"))
+	if limit < 1 || limit > 100 {
+		limit = 10
+	}
+
+	posts, err := h.postService.GetAllPosts(category, search, tags, page, limit)
 	if err != nil {
 		http.Error(w, "Could not fetch posts", http.StatusInternalServerError)
 		return

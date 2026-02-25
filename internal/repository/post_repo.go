@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/DataM1d/digital-library/internal/models"
+	"github.com/lib/pq"
 )
 
 type PostRepository struct {
@@ -22,8 +23,12 @@ func (r *PostRepository) Create(p *models.Post) error {
 	}
 	defer tx.Rollback()
 
-	query := `INSERT INTO posts (title, content, category_id) VALUES ($1, $2, $3) RETURNING id`
-	err = tx.QueryRow(query, p.Title, p.Content, p.CategoryID).Scan(&p.ID)
+	query := `
+        INSERT INTO posts (title, content, image_url, blur_hash, slug, category_id, created_at)
+        VALUES ($1, $2, $3, $4, $5, $6, NOW())
+        RETURNING id`
+
+	err = tx.QueryRow(query, p.Title, p.Content, p.ImageURL, p.BlurHash, p.Slug, p.CategoryID).Scan(&p.ID)
 	if err != nil {
 		return err
 	}
@@ -42,16 +47,19 @@ func (r *PostRepository) Create(p *models.Post) error {
 	return tx.Commit()
 }
 
-func (r *PostRepository) GetAll(category string, search string, limit, offset int) ([]models.Post, error) {
+func (r *PostRepository) GetAll(category string, search string, tags []string, limit, offset int) ([]models.Post, error) {
 	query := `
-    SELECT p.id, p.title, p.content, p.category_id, c.name, 
-           (SELECT COUNT(*) FROM likes WHERE post_id = p.id) as like_count
-    FROM posts p
-    LEFT JOIN categories c ON p.category_id = c.id
-    WHERE 1=1`
+        SELECT DISTINCT p.id, p.title, p.content, p.image_url, p.blur_hash, p.slug, 
+               p.created_at, c.name as category_name,
+               (SELECT COUNT(*) FROM likes WHERE post_id = p.id) as like_count
+        FROM posts p
+        LEFT JOIN categories c ON p.category_id = c.id
+        LEFT JOIN post_tags pt ON p.id = pt.post_id
+        LEFT JOIN tags t ON pt.tag_id = t.id
+        WHERE (p.title ILIKE $1 OR p.content ILIKE $1)`
 
-	var args []interface{}
-	argCount := 1
+	args := []interface{}{"%" + search + "%", limit, offset}
+	argCount := 4
 
 	if category != "" {
 		query += fmt.Sprintf(" AND c.slug = $%d", argCount)
@@ -59,36 +67,41 @@ func (r *PostRepository) GetAll(category string, search string, limit, offset in
 		argCount++
 	}
 
-	if search != "" {
-		query += fmt.Sprintf(" AND (p.title ILIKE $%d OR p.content ILIKE $%d)", argCount, argCount)
-		args = append(args, "%"+search+"%")
+	if len(tags) > 0 {
+		query += fmt.Sprintf(" AND t.name = ANY($%d)", argCount)
+		args = append(args, pq.Array(tags))
 		argCount++
 	}
 
-	query += fmt.Sprintf(" ORDER BY p.created_at DESC LIMIT $%d OFFSET $%d", argCount, argCount+1)
-	args = append(args, limit, offset)
+	query += " ORDER BY p.created_at DESC LIMIT $2 OFFSET $3"
 
-	rows, err := r.db.Query(query, args...)
+	var rows *sql.Rows
+	var err error
+
+	rows, err = r.db.Query(query, args...)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
 
-	posts := []models.Post{}
+	var posts []models.Post
 	for rows.Next() {
 		var p models.Post
-		var categoryName sql.NullString
-		var categoryID sql.NullInt64
-		var content sql.NullString
+		var catName, img, blur, slug, content sql.NullString
 
-		err := rows.Scan(&p.ID, &p.Title, &content, &categoryID, &categoryName, &p.LikeCount)
+		err := rows.Scan(
+			&p.ID, &p.Title, &content, &img, &blur, &slug,
+			&p.CreatedAt, &catName, &p.LikeCount,
+		)
 		if err != nil {
 			return nil, err
 		}
 
 		p.Content = content.String
-		p.CategoryID = int(categoryID.Int64)
-		p.CategoryName = categoryName.String
+		p.CategoryName = catName.String
+		p.ImageURL = img.String
+		p.BlurHash = blur.String
+		p.Slug = slug.String
 
 		tagQuery := `SELECT t.name FROM tags t JOIN post_tags pt ON t.id = pt.tag_id WHERE pt.post_id = $1`
 		tagRows, err := r.db.Query(tagQuery, p.ID)
