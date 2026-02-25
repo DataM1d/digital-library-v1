@@ -59,12 +59,17 @@ func main() {
 	r.Post("/register", authHandler.Register)
 	r.Post("/login", authHandler.Login)
 
+	//PUBLIC
 	r.Group(func(r chi.Router) {
+		r.Post("/register", authHandler.Register)
+		r.Post("/login", authHandler.Login)
 		r.Get("/posts", postHandler.GetPosts)
 		r.Get("/posts/{id}", postHandler.GetPosts)
-		r.Get("/posts/{id}/comments", commentHandler.GetComments)
+		r.Get("/posts/s/{slug}", postHandler.GetBySlug)
+		r.Post("/posts/{id}/comments", commentHandler.CreateComment)
 	})
 
+	//PROTECTED
 	r.Group(func(r chi.Router) {
 		r.Use(customMiddleware.AuthMiddleware)
 		r.Post("/posts", postHandler.CreatePost)

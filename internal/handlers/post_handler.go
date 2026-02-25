@@ -97,3 +97,16 @@ func (h *PostHandler) ToggleLike(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(map[string]string{"message": msg})
 }
+
+func (h *PostHandler) GetBySlug(w http.ResponseWriter, r *http.Request) {
+	slug := chi.URLParam(r, "slug")
+
+	post, err := h.postService.GetPostBySlug(slug)
+	if err != nil {
+		http.Error(w, "Post not found", http.StatusNotFound)
+		return
+	}
+
+	w.Header().Set("Content Type", "application/json")
+	json.NewEncoder(w).Encode(post)
+}

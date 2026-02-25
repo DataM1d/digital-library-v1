@@ -133,3 +133,38 @@ func (r *PostRepository) ToggleLike(userID, postID int) (bool, error) {
 		return true, err
 	}
 }
+
+func (r *PostRepository) GetBySlug(slug string) (*models.Post, error) {
+	query := `
+        SELECT p.id, p.title, p.content, p.image_url, p.blur_hash, p.slug, 
+               p.created_at, c.name as category_name
+        FROM posts p
+        LEFT JOIN categories c ON p.category_id = c.id
+        WHERE p.slug = $1`
+
+	var p models.Post
+	var catName, img, blur, content, slugVal sql.NullString
+
+	err := r.db.QueryRow(query, slug).Scan(
+		&p.ID, &p.Title, &content, &img, &blur, &slugVal,
+		&p.CreatedAt, &catName,
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	p.Content = content.String
+	p.CategoryName = catName.String
+	p.ImageURL = img.String
+	p.BlurHash = blur.String
+	p.Slug = slugVal.String
+
+	return &p, nil
+}
+
+func (r *PostRepository) SlugExists(slug string) (bool, error) {
+	var exists bool
+	query := `SELECT EXISTS(SELECT 1 FROM posts WHERE slug = $1)`
+	err := r.db.QueryRow(query, slug).Scan(&exists)
+	return exists, err
+}

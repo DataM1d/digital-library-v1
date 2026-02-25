@@ -345,12 +345,33 @@ Phase 3: The Social Layer 2026-02-25
 
     Fix: Used SQL string concatenation `('user_' || id)` to generate unique temporary data based on the primary Key.
 
-5. The silent error 
+5. The Silent error 
     What: The API returned 500 but the terminal showed nothing until i looked at the panic trace.
 
     Why: The `chi.Middleware.Recoverer` catches panics to keep the server from crashing, but it can hide the why if you are not looking at the console logs.
 
     Lesson: When a request fails in under 1ms with a 500 error, its almost always a Go panic(like nil pointer or bad assertion) rather than a slow database error.
 
-    
 
+Phase 3: The Slug & Collision Engine 2026-02-25
+
+1. String Proccesing with Regex:
+    What: Built a utility to convert titles like "Modern Art!" into "modern-art".
+
+    The Regex Trap: Learned that `[^a-z0-9]+` removes spaces, making `[^a-z0-9]+` removes spaces, act on empty characters between letters.
+
+    Fix: Used `[^a-z0-9\s]+` to preserve spaces temporarily, then swapped spaces for hyphens. This taught me that Regex is powerful but requires precise "character white-listing."
+
+2. The Collision Resolution Algorithm:
+    Concept: Handled the Unique Constraint problem where two posts can't share the same slug.
+
+    Implementation: Created a recursive `for` loop in the Service layer. It checks the DB for a slug, if it exists, appends a counter (`-1`, `-2`) and checks again.
+
+    Architecture: This proved why the Service layer exists. The Repository should not decide how to rename a post, it just reports if a name is taken. The Service is the brain that decides the new name.
+
+3. Clean URLs (SEO):
+    What: Shifted from `posts/5` to `/posts/s/industrial-minimalist`.
+
+    Lesson: Learned that IDs are for computers, but Slugs are for humans and Search Engines. Using strings as primary identifiers in URLs makes the platform feel like a real product.
+
+    
