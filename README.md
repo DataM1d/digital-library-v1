@@ -24,7 +24,7 @@ Architecture & Design
       Pkg: Shared utilities (JWT, Slugs, Password Hashing).
 
 Key Engineering Decisions
-   Collision Resistant Slugs: Implemented a recursive check in the Service layer to ensure unique URL paths (e.g, `modern-art` -> `modern-art-1`.
+   Collision Resistant Slugs: Implemented a recursive check in the Service layer to ensure unique URL paths (e.g, `modern-art` -> `modern-art-1`).
    Atomic Transactions: Used `db.Begin()` for post creation to ensure Post Tag relationships are created as a single unit of work.
    Context Key Safety: Utilized custom types for Context keys to prevent collision and ensure type safe middleware assertions.
    SQL Optimization: Used `COALESCE` and `Subqueries` to handle nullable joins and performance heavy counts directly in the DB.
