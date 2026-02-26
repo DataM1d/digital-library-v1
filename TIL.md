@@ -374,4 +374,29 @@ Phase 3: The Slug & Collision Engine 2026-02-25
 
     Lesson: Learned that IDs are for computers, but Slugs are for humans and Search Engines. Using strings as primary identifiers in URLs makes the platform feel like a real product.
 
+Phase 4: Binary Data & Physical Storage 2026-02-26
+
+1.  Multipart Form Handling:
+    What: Used `r.ParseMultipartForm(5 << 20)` to handle image uploads.
+
+    Lesson: Standard JSON handlers can't read images. You have to switch to multipart/form data. The 5 << 20 bit is a bit shift that sets a 5MB limit essential for preventing users from crashing your server with 10GB files.
+
+2.  The io.Copy:
+    What: Used `io.Copy(dst, file)` to move data from the network request to the hard drive.
+
+    Lesson: In Go, data is often treated as a Stream (Reader/Writer), You do not have to load the whole image into memory (RAM), you just pipe it from the request straight to a file. This is why Go is so efficent for file servers.
+
+3.  Static File Saving:
+    What: Registered `http.FileServer` on the `/uploads/` route.
+
+    Concept: I learned that API routes (which return JSON) and File routes (which return images) can live on the same server. By using `http.StripPrefix`, I can keep my folder structure clean while making images accessible via a URL.
+
+4.  The Post Upload Reference Pattern:
+    Concept: Do not send the image and the post data in one giant request:
+
+    Flow: 1 Upload image -> Get URL back. 2 Create Post -> include the URL in the JSON.
+
+    Why: This makes the API more resillient. If the post creation fails, you still have the image. If the image upload fails, you do not waste DB resources.
+
     
+
