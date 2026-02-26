@@ -2,8 +2,13 @@ package handlers
 
 import (
 	"encoding/json"
+	"fmt"
+	"io"
 	"net/http"
+	"os"
+	"path/filepath"
 	"strconv"
+	"time"
 
 	"github.com/DataM1d/digital-library/internal/middleware"
 	"github.com/DataM1d/digital-library/internal/models"
@@ -19,10 +24,44 @@ func NewPostHandler(s *service.PostService) *PostHandler {
 	return &PostHandler{postService: s}
 }
 
+func (h *PostHandler) UploadImage(w http.ResponseWriter, r *http.Request) {
+	if err := r.ParseMultipartForm(5 << 20); err != nil {
+		http.Error(w, "File too large", http.StatusBadRequest)
+		return
+	}
+
+	file, handler, err := r.FormFile("image")
+	if err != nil {
+		http.Error(w, "Invalid form key", http.StatusBadRequest)
+		return
+	}
+	defer file.Close()
+
+	fileName := fmt.Sprintf("%d-%s", time.Now().Unix(), handler.Filename)
+	path := filepath.Join("uploads", fileName)
+
+	dst, err := os.Create(path)
+	if err != nil {
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
+	}
+	defer dst.Close()
+
+	if _, err := io.Copy(dst, file); err != nil {
+		http.Error(w, "Failed to save file", http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]string{
+		"url": "/uploads/" + fileName,
+	})
+}
+
 func (h *PostHandler) CreatePost(w http.ResponseWriter, r *http.Request) {
 	role, ok := r.Context().Value(middleware.RoleKey).(string)
 	if !ok {
-		http.Error(w, "Unauthorized: Role missing", http.StatusUnauthorized)
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
 		return
 	}
 
@@ -46,7 +85,6 @@ func (h *PostHandler) CreatePost(w http.ResponseWriter, r *http.Request) {
 func (h *PostHandler) GetPosts(w http.ResponseWriter, r *http.Request) {
 	search := r.URL.Query().Get("search")
 	category := r.URL.Query().Get("category")
-
 	tags := r.URL.Query()["tags"]
 
 	page, _ := strconv.Atoi(r.URL.Query().Get("page"))
@@ -107,6 +145,6 @@ func (h *PostHandler) GetBySlug(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	w.Header().Set("Content Type", "application/json")
+	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(post)
 }

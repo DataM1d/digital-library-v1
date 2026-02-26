@@ -15,3 +15,6 @@ vendor/
 problems.md
 
 TODO.MD
+
+uploads/*
+!uploads/.gitkeep

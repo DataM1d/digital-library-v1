@@ -4,6 +4,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"path/filepath"
 
 	"github.com/DataM1d/digital-library/internal/handlers"
 	customMiddleware "github.com/DataM1d/digital-library/internal/middleware"
@@ -35,14 +36,13 @@ func main() {
 
 	postRepo := repository.NewPostRepository(db)
 	userRepo := repository.NewUserRepository(db)
+	commentRepo := repository.NewCommentRepository(db)
 
 	postService := service.NewPostService(postRepo)
+	commentService := service.NewCommentService(commentRepo)
 
 	postHandler := handlers.NewPostHandler(postService)
 	authHandler := handlers.NewAuthHandler(userRepo)
-
-	commentRepo := repository.NewCommentRepository(db)
-	commentService := service.NewCommentService(commentRepo)
 	commentHandler := handlers.NewCommentHandler(commentService)
 
 	r := chi.NewRouter()
@@ -51,13 +51,14 @@ func main() {
 	r.Use(chimiddleware.StripSlashes)
 	r.Use(chimiddleware.Recoverer)
 
+	workDir, _ := os.Getwd()
+	filesDir := http.Dir(filepath.Join(workDir, "uploads"))
+	r.Handle("/uploads/*", http.StripPrefix("/uploads/", http.FileServer(filesDir)))
+
 	r.Get("/health", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		w.Write([]byte(`{"status": "ok"}`))
 	})
-
-	r.Post("/register", authHandler.Register)
-	r.Post("/login", authHandler.Login)
 
 	//PUBLIC
 	r.Group(func(r chi.Router) {
@@ -75,6 +76,7 @@ func main() {
 		r.Post("/posts", postHandler.CreatePost)
 		r.Post("/posts/{id}/like", postHandler.ToggleLike)
 		r.Post("/posts/{id}/comments", commentHandler.CreateComment)
+		r.Post("/upload", postHandler.UploadImage)
 	})
 
 	log.Println("Server starting on :8080...")
