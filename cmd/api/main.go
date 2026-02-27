@@ -22,25 +22,28 @@ func main() {
 		log.Fatal("Error loading .env file")
 	}
 
-	host := os.Getenv("DB_HOST")
-	port := os.Getenv("DB_PORT")
-	user := os.Getenv("DB_USER")
-	pass := os.Getenv("DB_PASSWORD")
-	name := os.Getenv("DB_NAME")
-
-	db, err := database.NewPostgresDB(host, port, user, pass, name)
+	db, err := database.NewPostgresDB(
+		os.Getenv("DB_HOST"),
+		os.Getenv("DB_PORT"),
+		os.Getenv("DB_USER"),
+		os.Getenv("DB_PASSWORD"),
+		os.Getenv("DB_NAME"),
+	)
 	if err != nil {
 		log.Fatal("Could not connect to database: ", err)
 	}
 	defer db.Close()
 
+	//REPOSITORIES
 	postRepo := repository.NewPostRepository(db)
 	userRepo := repository.NewUserRepository(db)
 	commentRepo := repository.NewCommentRepository(db)
 
+	//SERVICES
 	postService := service.NewPostService(postRepo)
 	commentService := service.NewCommentService(commentRepo)
 
+	//HANDLERS
 	postHandler := handlers.NewPostHandler(postService)
 	authHandler := handlers.NewAuthHandler(userRepo)
 	commentHandler := handlers.NewCommentHandler(commentService)
@@ -51,6 +54,7 @@ func main() {
 	r.Use(chimiddleware.StripSlashes)
 	r.Use(chimiddleware.Recoverer)
 
+	//STATIC FILES
 	workDir, _ := os.Getwd()
 	filesDir := http.Dir(filepath.Join(workDir, "uploads"))
 	r.Handle("/uploads/*", http.StripPrefix("/uploads/", http.FileServer(filesDir)))
@@ -65,21 +69,21 @@ func main() {
 		r.Post("/register", authHandler.Register)
 		r.Post("/login", authHandler.Login)
 		r.Get("/posts", postHandler.GetPosts)
-		r.Get("/posts/{id}", postHandler.GetPosts)
 		r.Get("/posts/s/{slug}", postHandler.GetBySlug)
-		r.Post("/posts/{id}/comments", commentHandler.CreateComment)
 	})
 
 	//PROTECTED
 	r.Group(func(r chi.Router) {
 		r.Use(customMiddleware.AuthMiddleware)
+
 		r.Post("/posts", postHandler.CreatePost)
+		r.Put("/posts/{id}", postHandler.UpdatePost)
+		r.Delete("/posts/{id}", postHandler.DeletePost)
 		r.Post("/posts/{id}/like", postHandler.ToggleLike)
 		r.Post("/posts/{id}/comments", commentHandler.CreateComment)
 		r.Post("/upload", postHandler.UploadImage)
 	})
 
 	log.Println("Server starting on :8080...")
-	log.Printf("V2 Roadmap: Public routes enabled. Ready for endless scroll.")
 	http.ListenAndServe(":8080", r)
 }

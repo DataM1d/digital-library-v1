@@ -398,5 +398,16 @@ Phase 4: Binary Data & Physical Storage 2026-02-26
 
     Why: This makes the API more resillient. If the post creation fails, you still have the image. If the image upload fails, you do not waste DB resources.
 
-    
 
+Phase 4 Updated version 2: Binary Data, Physical Storage & The Lifecycle Final 2026-02-27
+
+1. Service vs Repo:
+   What: Implemented DeletePost logic that removes both the DB row and the physical file.
+
+   Lesson: The Repository handles the SQL, but the Service decides to call `os.remove()` to clean up the disk. This prevents orphaned images from filling up the server.
+
+2. RESTful Roputing Mastery:
+   What: Encountered 405 method not allowed errors.
+
+   Lesson: Learned that Chi router is strict. If you define a GET for /posts but not a PUT for /posts/{id}, the server will reject the request. Every CRUD operation needs its own explicit method + path registration.
+   

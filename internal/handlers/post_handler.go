@@ -60,7 +60,9 @@ func (h *PostHandler) UploadImage(w http.ResponseWriter, r *http.Request) {
 
 func (h *PostHandler) CreatePost(w http.ResponseWriter, r *http.Request) {
 	role, ok := r.Context().Value(middleware.RoleKey).(string)
-	if !ok {
+	userID, userOK := r.Context().Value(middleware.UserIDKey).(int)
+
+	if !ok || !userOK {
 		http.Error(w, "Unauthorized", http.StatusUnauthorized)
 		return
 	}
@@ -71,7 +73,7 @@ func (h *PostHandler) CreatePost(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err := h.postService.CreateLibraryEntry(&post, role)
+	err := h.postService.CreateLibraryEntry(&post, role, userID)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusForbidden)
 		return
@@ -105,6 +107,61 @@ func (h *PostHandler) GetPosts(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(posts)
+}
+
+func (h *PostHandler) UpdatePost(w http.ResponseWriter, r *http.Request) {
+	role, ok := r.Context().Value(middleware.RoleKey).(string)
+	userID, userOK := r.Context().Value(middleware.UserIDKey).(int)
+	if !ok || !userOK {
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
+
+	id, err := strconv.Atoi(chi.URLParam(r, "id"))
+	if err != nil {
+		http.Error(w, "Invalid ID", http.StatusBadRequest)
+		return
+	}
+
+	var post models.Post
+	if err := json.NewDecoder(r.Body).Decode(&post); err != nil {
+		http.Error(w, "Invalid request body", http.StatusBadRequest)
+		return
+	}
+	post.ID = id
+
+	err = h.postService.UpdatePost(&post, role, userID)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]string{"message": "Post updated successfully"})
+}
+
+func (h *PostHandler) DeletePost(w http.ResponseWriter, r *http.Request) {
+	role, ok := r.Context().Value(middleware.RoleKey).(string)
+	if !ok {
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
+
+	id, err := strconv.Atoi(chi.URLParam(r, "id"))
+	if err != nil {
+		http.Error(w, "Invalid ID", http.StatusBadRequest)
+		return
+	}
+
+	err = h.postService.DeletePost(id, role)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(map[string]string{"message": "Post deleted"})
 }
 
 func (h *PostHandler) ToggleLike(w http.ResponseWriter, r *http.Request) {

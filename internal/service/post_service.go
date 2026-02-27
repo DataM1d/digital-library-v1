@@ -3,6 +3,8 @@ package service
 import (
 	"errors"
 	"fmt"
+	"os"
+	"path/filepath"
 
 	"github.com/DataM1d/digital-library/internal/models"
 	"github.com/DataM1d/digital-library/internal/repository"
@@ -17,24 +19,57 @@ func NewPostService(repo *repository.PostRepository) *PostService {
 	return &PostService{repo: repo}
 }
 
-func (s *PostService) CreateLibraryEntry(post *models.Post, userRole string) error {
+func (s *PostService) CreateLibraryEntry(post *models.Post, userRole string, userID int) error {
 	if userRole != "admin" {
 		return errors.New("unauthorized: only admins can create library posts")
 	}
 
-	baseSlug := utils.GenerateSlug(post.Title)
-	if baseSlug == "" {
-		return errors.New("title is too short or invalid")
+	post.CreatedBy = userID
+
+	if post.Status == "" {
+		post.Status = "published"
 	}
 
+	baseSlug := utils.GenerateSlug(post.Title)
 	finalSlug, err := s.generateUniqueSlug(baseSlug)
 	if err != nil {
 		return err
 	}
-
 	post.Slug = finalSlug
 
 	return s.repo.Create(post)
+}
+
+func (s *PostService) UpdatePost(post *models.Post, userRole string, userID int) error {
+	if userRole != "admin" {
+		return errors.New("unauthorized: only admins can update posts")
+	}
+
+	post.LastModifiedBy = userID
+
+	if post.Status == "" {
+		post.Status = "published"
+	}
+
+	return s.repo.Update(post)
+}
+
+func (s *PostService) DeletePost(id int, userRole string) error {
+	if userRole != "admin" {
+		return errors.New("unauthorized: only admins can delete posts")
+	}
+
+	imageURL, err := s.repo.Delete(id)
+	if err != nil {
+		return err
+	}
+
+	if imageURL != "" {
+		localPath := filepath.Join(".", imageURL)
+		_ = os.Remove(localPath)
+	}
+
+	return nil
 }
 
 func (s *PostService) generateUniqueSlug(baseSlug string) (string, error) {
