@@ -129,3 +129,11 @@ func (s *PostService) GetPostBySlug(slug string) (*models.Post, error) {
 	}
 	return s.repo.GetBySlug(slug)
 }
+
+func (s *PostService) GetLikedPosts(userID int) ([]models.Post, error) {
+	posts, err := s.repo.GetUserLikedPosts(userID)
+	if err != nil {
+		return nil, fmt.Errorf("Service failed to fetch liked posts: %w", err)
+	}
+	return posts, nil
+}

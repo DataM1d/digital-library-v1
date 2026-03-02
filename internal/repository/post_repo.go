@@ -24,11 +24,15 @@ func (r *PostRepository) Create(p *models.Post) error {
 	defer tx.Rollback()
 
 	query := `
-    INSERT INTO posts (title, content, image_url, blur_hash, alt_text, slug, status, category_id, created_by, created_at, updated_at)
-    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, NOW(), NOW())
+    INSERT INTO posts (title, content, image_url, blur_hash, alt_text, slug, status, category_id, meta_description, og_image, created_by, created_at, updated_at)
+    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, NOW(), NOW())
     RETURNING id`
 
-	err = tx.QueryRow(query, p.Title, p.Content, p.ImageURL, p.BlurHash, p.AltText, p.Slug, p.Status, p.CategoryID, p.CreatedBy).Scan(&p.ID)
+	err = tx.QueryRow(query,
+		p.Title, p.Content, p.ImageURL, p.BlurHash, p.AltText,
+		p.Slug, p.Status, p.CategoryID, p.MetaDescription, p.OGImage, p.CreatedBy,
+	).Scan(&p.ID)
+
 	if err != nil {
 		return err
 	}
@@ -57,9 +61,13 @@ func (r *PostRepository) Update(p *models.Post) error {
 	query := `
         UPDATE posts 
         SET title = $1, content = $2, image_url = $3, blur_hash = $4, alt_text = $5, 
-            category_id = $6, status = $7, last_modified_by = $8, updated_at = NOW()
-        WHERE id = $9`
-	_, err = tx.Exec(query, p.Title, p.Content, p.ImageURL, p.BlurHash, p.AltText, p.CategoryID, p.Status, p.LastModifiedBy, p.ID)
+            category_id = $6, status = $7, meta_description = $8, og_image = $9, 
+            last_modified_by = $10, updated_at = NOW()
+        WHERE id = $11`
+	_, err = tx.Exec(query,
+		p.Title, p.Content, p.ImageURL, p.BlurHash, p.AltText,
+		p.CategoryID, p.Status, p.MetaDescription, p.OGImage, p.LastModifiedBy, p.ID,
+	)
 	if err != nil {
 		return err
 	}
@@ -193,17 +201,17 @@ func (r *PostRepository) ToggleLike(userID, postID int) (bool, error) {
 func (r *PostRepository) GetBySlug(slug string) (*models.Post, error) {
 	query := `
         SELECT p.id, p.title, p.content, p.image_url, p.blur_hash, p.alt_text, p.slug, p.status,
-               p.created_at, c.name as category_name
+               p.meta_description, p.og_image, p.created_at, c.name as category_name
         FROM posts p
         LEFT JOIN categories c ON p.category_id = c.id
         WHERE p.slug = $1`
 
 	var p models.Post
-	var catName, img, blur, alt, content, slugVal, status sql.NullString
+	var catName, img, blur, alt, content, slugVal, status, meta, og sql.NullString
 
 	err := r.db.QueryRow(query, slug).Scan(
 		&p.ID, &p.Title, &content, &img, &blur, &alt, &slugVal, &status,
-		&p.CreatedAt, &catName,
+		&meta, &og, &p.CreatedAt, &catName,
 	)
 
 	if err != nil {
@@ -217,6 +225,8 @@ func (r *PostRepository) GetBySlug(slug string) (*models.Post, error) {
 	p.AltText = alt.String
 	p.Slug = slugVal.String
 	p.Status = status.String
+	p.MetaDescription = meta.String
+	p.OGImage = og.String
 
 	return &p, nil
 }

@@ -3,6 +3,9 @@ package handlers
 import (
 	"encoding/json"
 	"fmt"
+	"image"
+	_ "image/jpeg"
+	_ "image/png"
 	"io"
 	"net/http"
 	"os"
@@ -13,6 +16,8 @@ import (
 	"github.com/DataM1d/digital-library/internal/middleware"
 	"github.com/DataM1d/digital-library/internal/models"
 	"github.com/DataM1d/digital-library/internal/service"
+	"github.com/DataM1d/digital-library/pkg/utils"
+	"github.com/bbrks/go-blurhash"
 	"github.com/go-chi/chi/v5"
 )
 
@@ -26,13 +31,13 @@ func NewPostHandler(s *service.PostService) *PostHandler {
 
 func (h *PostHandler) UploadImage(w http.ResponseWriter, r *http.Request) {
 	if err := r.ParseMultipartForm(5 << 20); err != nil {
-		http.Error(w, "File too large", http.StatusBadRequest)
+		utils.JSONError(w, "File too large (Max 5MB)", http.StatusBadRequest)
 		return
 	}
 
 	file, handler, err := r.FormFile("image")
 	if err != nil {
-		http.Error(w, "Invalid form key", http.StatusBadRequest)
+		utils.JSONError(w, "Invalid form key", http.StatusBadRequest)
 		return
 	}
 	defer file.Close()
@@ -42,19 +47,31 @@ func (h *PostHandler) UploadImage(w http.ResponseWriter, r *http.Request) {
 
 	dst, err := os.Create(path)
 	if err != nil {
-		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		utils.JSONError(w, "Internal server error", http.StatusInternalServerError)
 		return
 	}
 	defer dst.Close()
 
 	if _, err := io.Copy(dst, file); err != nil {
-		http.Error(w, "Failed to save file", http.StatusInternalServerError)
+		utils.JSONError(w, "Failed to save file", http.StatusInternalServerError)
 		return
+	}
+
+	file.Seek(0, 0)
+
+	img, _, err := image.Decode(file)
+	var hash string
+	if err == nil {
+		hash, err = blurhash.Encode(4, 3, img)
+		if err != nil {
+			hash = ""
+		}
 	}
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(map[string]string{
-		"url": "/uploads/" + fileName,
+		"url":      "/uploads/" + fileName,
+		"blurhash": hash,
 	})
 }
 
@@ -63,19 +80,19 @@ func (h *PostHandler) CreatePost(w http.ResponseWriter, r *http.Request) {
 	userID, userOK := r.Context().Value(middleware.UserIDKey).(int)
 
 	if !ok || !userOK {
-		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		utils.JSONError(w, "Unauthorized", http.StatusUnauthorized)
 		return
 	}
 
 	var post models.Post
 	if err := json.NewDecoder(r.Body).Decode(&post); err != nil {
-		http.Error(w, "Invalid request body", http.StatusBadRequest)
+		utils.JSONError(w, "Invalid request body", http.StatusBadRequest)
 		return
 	}
 
 	err := h.postService.CreateLibraryEntry(&post, role, userID)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusForbidden)
+		utils.JSONError(w, err.Error(), http.StatusForbidden)
 		return
 	}
 
@@ -103,7 +120,7 @@ func (h *PostHandler) GetPosts(w http.ResponseWriter, r *http.Request) {
 
 	posts, err := h.postService.GetAllPosts(category, search, tags, page, limit, role)
 	if err != nil {
-		http.Error(w, "Could not fetch posts", http.StatusInternalServerError)
+		utils.JSONError(w, "Could not fetch posts", http.StatusInternalServerError)
 		return
 	}
 
@@ -115,26 +132,26 @@ func (h *PostHandler) UpdatePost(w http.ResponseWriter, r *http.Request) {
 	role, ok := r.Context().Value(middleware.RoleKey).(string)
 	userID, userOK := r.Context().Value(middleware.UserIDKey).(int)
 	if !ok || !userOK {
-		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		utils.JSONError(w, "Unauthorized", http.StatusUnauthorized)
 		return
 	}
 
 	id, err := strconv.Atoi(chi.URLParam(r, "id"))
 	if err != nil {
-		http.Error(w, "Invalid ID", http.StatusBadRequest)
+		utils.JSONError(w, "Invalid ID", http.StatusBadRequest)
 		return
 	}
 
 	var post models.Post
 	if err := json.NewDecoder(r.Body).Decode(&post); err != nil {
-		http.Error(w, "Invalid request body", http.StatusBadRequest)
+		utils.JSONError(w, "Invalid request body", http.StatusBadRequest)
 		return
 	}
 	post.ID = id
 
 	err = h.postService.UpdatePost(&post, role, userID)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		utils.JSONError(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
@@ -145,19 +162,19 @@ func (h *PostHandler) UpdatePost(w http.ResponseWriter, r *http.Request) {
 func (h *PostHandler) DeletePost(w http.ResponseWriter, r *http.Request) {
 	role, ok := r.Context().Value(middleware.RoleKey).(string)
 	if !ok {
-		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		utils.JSONError(w, "Unauthorized", http.StatusUnauthorized)
 		return
 	}
 
 	id, err := strconv.Atoi(chi.URLParam(r, "id"))
 	if err != nil {
-		http.Error(w, "Invalid ID", http.StatusBadRequest)
+		utils.JSONError(w, "Invalid ID", http.StatusBadRequest)
 		return
 	}
 
 	err = h.postService.DeletePost(id, role)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		utils.JSONError(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
@@ -169,20 +186,20 @@ func (h *PostHandler) DeletePost(w http.ResponseWriter, r *http.Request) {
 func (h *PostHandler) ToggleLike(w http.ResponseWriter, r *http.Request) {
 	userID, ok := r.Context().Value(middleware.UserIDKey).(int)
 	if !ok {
-		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		utils.JSONError(w, "Unauthorized", http.StatusUnauthorized)
 		return
 	}
 
 	postIDStr := chi.URLParam(r, "id")
 	postID, err := strconv.Atoi(postIDStr)
 	if err != nil {
-		http.Error(w, "Invalid post ID", http.StatusBadRequest)
+		utils.JSONError(w, "Invalid post ID", http.StatusBadRequest)
 		return
 	}
 
 	liked, err := h.postService.ToggleLike(userID, postID)
 	if err != nil {
-		http.Error(w, "Database error", http.StatusInternalServerError)
+		utils.JSONError(w, "Database error", http.StatusInternalServerError)
 		return
 	}
 
@@ -200,10 +217,27 @@ func (h *PostHandler) GetBySlug(w http.ResponseWriter, r *http.Request) {
 
 	post, err := h.postService.GetPostBySlug(slug)
 	if err != nil {
-		http.Error(w, "Post not found", http.StatusNotFound)
+		utils.JSONError(w, "Post not found", http.StatusNotFound)
 		return
 	}
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(post)
+}
+
+func (h *PostHandler) GetMyLikedPosts(w http.ResponseWriter, r *http.Request) {
+	userID, ok := r.Context().Value(middleware.UserIDKey).(int)
+	if !ok {
+		utils.JSONError(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
+
+	posts, err := h.postService.GetLikedPosts(userID)
+	if err != nil {
+		utils.JSONError(w, "Could not fetch liked posts", http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(posts)
 }

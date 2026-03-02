@@ -15,6 +15,7 @@ import (
 	"github.com/go-chi/chi/v5"
 	chimiddleware "github.com/go-chi/chi/v5/middleware"
 	"github.com/joho/godotenv"
+	"github.com/rs/cors"
 )
 
 func main() {
@@ -39,12 +40,10 @@ func main() {
 	userRepo := repository.NewUserRepository(db)
 	commentRepo := repository.NewCommentRepository(db)
 	categoryRepo := repository.NewCategoryRepository(db)
-
 	postService := service.NewPostService(postRepo)
 	commentService := service.NewCommentService(commentRepo)
 	categoryService := service.NewCategoryService(categoryRepo)
 	userService := service.NewUserService(userRepo)
-
 	postHandler := handlers.NewPostHandler(postService)
 	authHandler := handlers.NewAuthHandler(userService)
 	commentHandler := handlers.NewCommentHandler(commentService)
@@ -77,11 +76,9 @@ func main() {
 	//PROTECTED ROUTES
 	r.Group(func(r chi.Router) {
 		r.Use(customMiddleware.AuthMiddleware)
-
 		r.Post("/categories", categoryHandler.CreateCategory)
 		r.Delete("/categories/{id}", categoryHandler.DeleteCategory)
 		r.Get("/users/me/likes", postHandler.GetMyLikedPosts)
-
 		r.With(customMiddleware.RateLimitMiddleware).Post("/upload", postHandler.UploadImage)
 		r.Post("/posts", postHandler.CreatePost)
 		r.Put("/posts/{id}", postHandler.UpdatePost)
@@ -90,9 +87,20 @@ func main() {
 		r.Post("/posts/{id}/comments", commentHandler.CreateComment)
 	})
 
+	c := cors.New(cors.Options{
+		AllowedOrigins:   []string{"http://localhost:3000"},
+		AllowedMethods:   []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
+		AllowedHeaders:   []string{"Accept", "Authorization", "Content-Type", "X-CSRF-Token"},
+		ExposedHeaders:   []string{"Link"},
+		AllowCredentials: true,
+		MaxAge:           300,
+	})
+
+	handler := c.Handler(r)
+
 	srv := &http.Server{
 		Addr:         ":8080",
-		Handler:      r,
+		Handler:      handler,
 		ReadTimeout:  5 * time.Second,
 		WriteTimeout: 10 * time.Second,
 		IdleTimeout:  120 * time.Second,
