@@ -1,10 +1,13 @@
 package main
 
 import (
+	"context"
 	"log"
 	"net/http"
 	"os"
+	"os/signal"
 	"path/filepath"
+	"syscall"
 	"time"
 
 	"github.com/DataM1d/digital-library/internal/handlers"
@@ -12,6 +15,7 @@ import (
 	"github.com/DataM1d/digital-library/internal/repository"
 	"github.com/DataM1d/digital-library/internal/service"
 	"github.com/DataM1d/digital-library/pkg/database"
+	"github.com/DataM1d/digital-library/pkg/utils"
 	"github.com/go-chi/chi/v5"
 	chimiddleware "github.com/go-chi/chi/v5/middleware"
 	"github.com/joho/godotenv"
@@ -19,9 +23,11 @@ import (
 )
 
 func main() {
-	err := godotenv.Load()
-	if err != nil {
-		log.Fatal("Error loading .env file")
+	_ = godotenv.Load()
+
+	uploadsDir := "./uploads"
+	if _, err := os.Stat(uploadsDir); os.IsNotExist(err) {
+		_ = os.MkdirAll(uploadsDir, 0755)
 	}
 
 	db, err := database.NewPostgresDB(
@@ -32,7 +38,7 @@ func main() {
 		os.Getenv("DB_NAME"),
 	)
 	if err != nil {
-		log.Fatal("Could not connect to database: ", err)
+		log.Fatal(err)
 	}
 	defer db.Close()
 
@@ -40,10 +46,12 @@ func main() {
 	userRepo := repository.NewUserRepository(db)
 	commentRepo := repository.NewCommentRepository(db)
 	categoryRepo := repository.NewCategoryRepository(db)
+
 	postService := service.NewPostService(postRepo)
 	commentService := service.NewCommentService(commentRepo)
 	categoryService := service.NewCategoryService(categoryRepo)
 	userService := service.NewUserService(userRepo)
+
 	postHandler := handlers.NewPostHandler(postService)
 	authHandler := handlers.NewAuthHandler(userService)
 	commentHandler := handlers.NewCommentHandler(commentService)
@@ -60,11 +68,9 @@ func main() {
 	r.Handle("/uploads/*", http.StripPrefix("/uploads/", http.FileServer(filesDir)))
 
 	r.Get("/health", func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "application/json")
-		w.Write([]byte(`{"status": "ok"}`))
+		utils.JSONResponse(w, http.StatusOK, map[string]string{"status": "ok"})
 	})
 
-	//PUBLIC ROUTES
 	r.Group(func(r chi.Router) {
 		r.With(customMiddleware.RateLimitMiddleware).Post("/register", authHandler.Register)
 		r.With(customMiddleware.RateLimitMiddleware).Post("/login", authHandler.Login)
@@ -73,7 +79,6 @@ func main() {
 		r.Get("/categories", categoryHandler.GetCategories)
 	})
 
-	//PROTECTED ROUTES
 	r.Group(func(r chi.Router) {
 		r.Use(customMiddleware.AuthMiddleware)
 		r.Post("/categories", categoryHandler.CreateCategory)
@@ -91,21 +96,32 @@ func main() {
 		AllowedOrigins:   []string{"http://localhost:3000"},
 		AllowedMethods:   []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
 		AllowedHeaders:   []string{"Accept", "Authorization", "Content-Type", "X-CSRF-Token"},
-		ExposedHeaders:   []string{"Link"},
 		AllowCredentials: true,
 		MaxAge:           300,
 	})
 
-	handler := c.Handler(r)
-
 	srv := &http.Server{
 		Addr:         ":8080",
-		Handler:      handler,
+		Handler:      c.Handler(r),
 		ReadTimeout:  5 * time.Second,
 		WriteTimeout: 10 * time.Second,
 		IdleTimeout:  120 * time.Second,
 	}
 
-	log.Println("Server starting on :8080...")
-	log.Fatal(srv.ListenAndServe())
+	go func() {
+		log.Println("Starting server on :8080")
+		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+			log.Fatalf("listen: %s\n", err)
+		}
+	}()
+
+	quit := make(chan os.Signal, 1)
+	signal.Notify(quit, os.Interrupt, syscall.SIGTERM)
+	<-quit
+
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	if err := srv.Shutdown(ctx); err != nil {
+		log.Fatal(err)
+	}
 }

@@ -4,6 +4,8 @@ import (
 	"net/http"
 	"sync"
 
+	"github.com/DataM1d/digital-library/pkg/utils"
+
 	"golang.org/x/time/rate"
 )
 
@@ -29,7 +31,7 @@ func RateLimitMiddleware(next http.Handler) http.Handler {
 
 		limiter := getLimiter(ip)
 		if !limiter.Allow() {
-			http.Error(w, "Too many requests. Please slow down", http.StatusTooManyRequests)
+			utils.JSONError(w, "Too many requests. Please slow down.", http.StatusTooManyRequests)
 			return
 		}
 

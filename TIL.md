@@ -561,7 +561,7 @@ phase 4: 2026-02-28
 
     Why: `image.Decode` returns the format name (e.g, "jpeg") but if it is not needed for logic, the underscore prevents unused variable compiler errors.
 
-phase 4: Meta description and Database Seed Script 2026-03-01
+phase 4: Meta description and Database Seed Script: 2026-03-01
 
 12. Open Graph and SEO in APIs:
     What: Added `meta_description` and `og_image` to the data model.
@@ -577,3 +577,54 @@ phase 4: Meta description and Database Seed Script 2026-03-01
 
     Lesson: SQL Logic (loops random selections) directly in the database to generate massive amounts of test data instantly.
 
+phase 4: CORS and Pre Flight: 2026-03-02
+
+14. CORS:
+    What: Learned that for complex requests like `DELETE` or `JSON POSTs`, browsers send a hidden OPTIONS request first.
+
+    Why: The browser asks the server, is it safe for me to send this data before actuallt sending it.
+
+    Lesson: The `rs/cors` package handles these pre flight requests automatically, saving time and effort from writing complex logic in router.
+
+15. Health checks vs Liveness probes:
+    What: Added a `/health` endpoint.
+
+    Why: It is a standard for modern infrastructure. If the health check fails, a load balancer can stop sending traffic to that instance automatically.
+
+16. Wrapping the Router:
+    What: Learned that top level middleware like CORS should wrap the entire chi.Router rather than being an internl `r.Use()`
+
+    Why: If a browser tries to fetch a static image from `/uploads` from a different domain, it still needs those CORS headers.
+
+    Lesson: `cors.Handler(r)` creates a new http.Handler that acts as a bodyguard for the entire app.
+
+phase 4: Final: 2026-03-03
+1.  Synchronizing Multi Value Returns in Go:
+    I learned that Go's strict type system requires every layer of a 3 tier architecture to     
+    explicitly handle the contract of returned values. When adding pagination i had to update the entire chain.
+    
+    Repository: `GetAll` now returns `([]Post, int, error)` to provide the total record count.
+
+    Service: Must receive all three values and pass them up, even if it does not manipulate the `total` count.
+
+    Handler: Uses the `total` to calculate `total_pages` for the frontend metadata.
+
+2.  Recursive Data Structures from Flat SQL Results:
+    To Build a threaded comment system without hitting the database multiple times (avoiding the N+1 problem), I implemented a tree building algorithm in the `CommentService`.
+
+    The logic: Fetch all comments for a post in one query, store them ina `map[int]*Comment`, and then iterate through the slice to attach children to their respective parents using pointer references.
+
+3. Atomic Transactions with PostgreSQL in GO:
+    I implemented `tx.Begin()` and `tx.Commit()` in the `PostRepository`. This ensures that when a Post is created, its associated Tags are also linked correctly. If the tag insertion fails, the database rolls back the post creation, preventing orphan posts with missing metadata.
+
+4. Security & Sanitization:
+    HTML sanitization: Integrated `bluemonday` in the Service layer. This ensures that even if an admin inputs custom HTML, the system strips out dangerous tags (XSS protection) befor the data reaches the database.
+
+    Opaque Auth Errors: Standardized login error messages to be generic (invalid email or password). This prevents attackers from using the login form to discover which emails are registered in the system.
+
+5. Middleware Strategy:
+    Rate Limiting: Implemented an IP Based rate limiter using `golang.org/x/time/rate` specifically for high risk routes like `/upload` and `login`.
+
+    Context Keys: Used a custom `ContextKey` type for JWT claims to avoid context collisions where different middlewares might accidentally overwrite each other's data.
+
+    

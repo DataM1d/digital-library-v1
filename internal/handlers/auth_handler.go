@@ -4,6 +4,8 @@ import (
 	"encoding/json"
 	"net/http"
 
+	"github.com/DataM1d/digital-library/pkg/utils"
+
 	"github.com/DataM1d/digital-library/internal/service"
 )
 
@@ -22,18 +24,17 @@ func (h *AuthHandler) Register(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := json.NewDecoder(r.Body).Decode(&input); err != nil {
-		http.Error(w, "Invalid input", http.StatusBadRequest)
+		utils.JSONError(w, "Invalid input", http.StatusBadRequest)
 		return
 	}
 
 	user, err := h.userService.Register(input.Email, input.Password)
 	if err != nil {
-		http.Error(w, "User already exists or internal error", http.StatusConflict)
+		utils.JSONError(w, "User already exists or internal error", http.StatusConflict)
 		return
 	}
 
-	w.WriteHeader(http.StatusCreated)
-	json.NewEncoder(w).Encode(user)
+	utils.JSONResponse(w, http.StatusCreated, user)
 }
 
 func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
@@ -43,15 +44,15 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := json.NewDecoder(r.Body).Decode(&input); err != nil {
-		http.Error(w, "Invalid input", http.StatusBadRequest)
+		utils.JSONError(w, "Invalid input", http.StatusBadRequest)
 		return
 	}
 
 	token, err := h.userService.Login(input.Email, input.Password)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusUnauthorized)
+		utils.JSONError(w, "Invalid email or password", http.StatusUnauthorized)
 		return
 	}
 
-	json.NewEncoder(w).Encode(map[string]string{"token": token})
+	utils.JSONResponse(w, http.StatusOK, map[string]string{"token": token})
 }

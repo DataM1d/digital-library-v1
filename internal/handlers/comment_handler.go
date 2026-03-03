@@ -8,6 +8,7 @@ import (
 	"github.com/DataM1d/digital-library/internal/middleware"
 	"github.com/DataM1d/digital-library/internal/models"
 	"github.com/DataM1d/digital-library/internal/service"
+	"github.com/DataM1d/digital-library/pkg/utils"
 	"github.com/go-chi/chi/v5"
 )
 
@@ -22,17 +23,17 @@ func NewCommentHandler(s *service.CommentService) *CommentHandler {
 func (h *CommentHandler) CreateComment(w http.ResponseWriter, r *http.Request) {
 	postID, _ := strconv.Atoi(chi.URLParam(r, "id"))
 
-	val := r.Context().Value(middleware.UserIDKey)
-	if val == nil {
-		http.Error(w, "user identity not found in context", http.StatusUnauthorized)
+	val, ok := r.Context().Value(middleware.UserIDKey).(int)
+	if !ok {
+		utils.JSONError(w, "User identity not found or invalid", http.StatusUnauthorized)
 		return
 	}
 
-	userID := val.(int)
+	userID := val
 
 	var c models.Comment
 	if err := json.NewDecoder(r.Body).Decode(&c); err != nil {
-		http.Error(w, "invalid request", http.StatusBadRequest)
+		utils.JSONError(w, "Invalid request body", http.StatusBadRequest)
 		return
 	}
 
@@ -40,12 +41,11 @@ func (h *CommentHandler) CreateComment(w http.ResponseWriter, r *http.Request) {
 	c.UserID = userID
 
 	if err := h.service.AddComment(&c); err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		utils.JSONError(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
-	w.WriteHeader(http.StatusCreated)
-	json.NewEncoder(w).Encode(c)
+	utils.JSONResponse(w, http.StatusCreated, c)
 }
 
 func (h *CommentHandler) GetComments(w http.ResponseWriter, r *http.Request) {
@@ -53,9 +53,9 @@ func (h *CommentHandler) GetComments(w http.ResponseWriter, r *http.Request) {
 
 	comments, err := h.service.GetPostComments(postID)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		utils.JSONError(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
-	json.NewEncoder(w).Encode(comments)
+	utils.JSONResponse(w, http.StatusOK, comments)
 }

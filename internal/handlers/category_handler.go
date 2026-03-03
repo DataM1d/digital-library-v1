@@ -6,6 +6,7 @@ import (
 	"strconv"
 
 	"github.com/DataM1d/digital-library/internal/service"
+	"github.com/DataM1d/digital-library/pkg/utils"
 	"github.com/go-chi/chi/v5"
 )
 
@@ -22,34 +23,33 @@ func (h *CategoryHandler) CreateCategory(w http.ResponseWriter, r *http.Request)
 		Name string `json:"name"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&input); err != nil {
-		http.Error(w, "Invalid input", http.StatusBadRequest)
+		utils.JSONError(w, "Invalid input", http.StatusBadRequest)
 		return
 	}
 
 	cat, err := h.service.CreateCategory(input.Name)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		utils.JSONError(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(cat)
+	utils.JSONResponse(w, http.StatusCreated, cat)
 }
 
 func (h *CategoryHandler) GetCategories(w http.ResponseWriter, r *http.Request) {
 	cats, err := h.service.GetAllCategories()
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		utils.JSONError(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	json.NewEncoder(w).Encode(cats)
+	utils.JSONResponse(w, http.StatusOK, cats)
 }
 
 func (h *CategoryHandler) DeleteCategory(w http.ResponseWriter, r *http.Request) {
 	id, _ := strconv.Atoi(chi.URLParam(r, "id"))
 	if err := h.service.DeleteCategory(id); err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		utils.JSONError(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	w.WriteHeader(http.StatusNoContent)
+	utils.JSONResponse(w, http.StatusNoContent, nil)
 }

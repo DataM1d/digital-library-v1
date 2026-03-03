@@ -42,6 +42,20 @@ func (h *PostHandler) UploadImage(w http.ResponseWriter, r *http.Request) {
 	}
 	defer file.Close()
 
+	buff := make([]byte, 512)
+	if _, err := file.Read(buff); err != nil {
+		utils.JSONError(w, "Could not verify file", http.StatusInternalServerError)
+		return
+	}
+
+	fileType := http.DetectContentType(buff)
+	if fileType != "image/jpeg" && fileType != "image/png" && fileType != "image/webp" {
+		utils.JSONError(w, "Invalid file type. Only JPEG, PNG, and WEBP allowed.", http.StatusBadRequest)
+		return
+	}
+
+	file.Seek(0, 0)
+
 	fileName := fmt.Sprintf("%d-%s", time.Now().Unix(), handler.Filename)
 	path := filepath.Join("uploads", fileName)
 
@@ -58,18 +72,13 @@ func (h *PostHandler) UploadImage(w http.ResponseWriter, r *http.Request) {
 	}
 
 	file.Seek(0, 0)
-
 	img, _, err := image.Decode(file)
 	var hash string
 	if err == nil {
-		hash, err = blurhash.Encode(4, 3, img)
-		if err != nil {
-			hash = ""
-		}
+		hash, _ = blurhash.Encode(4, 3, img)
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]string{
+	utils.JSONResponse(w, http.StatusOK, map[string]string{
 		"url":      "/uploads/" + fileName,
 		"blurhash": hash,
 	})
@@ -96,36 +105,39 @@ func (h *PostHandler) CreatePost(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusCreated)
-	json.NewEncoder(w).Encode(post)
+	utils.JSONResponse(w, http.StatusCreated, post)
 }
 
 func (h *PostHandler) GetPosts(w http.ResponseWriter, r *http.Request) {
 	search := r.URL.Query().Get("search")
 	category := r.URL.Query().Get("category")
 	tags := r.URL.Query()["tags"]
-
 	role, _ := r.Context().Value(middleware.RoleKey).(string)
 
 	page, _ := strconv.Atoi(r.URL.Query().Get("page"))
 	if page < 1 {
 		page = 1
 	}
-
 	limit, _ := strconv.Atoi(r.URL.Query().Get("limit"))
 	if limit < 1 || limit > 100 {
 		limit = 10
 	}
 
-	posts, err := h.postService.GetAllPosts(category, search, tags, page, limit, role)
+	posts, total, err := h.postService.GetAllPosts(category, search, tags, page, limit, role)
 	if err != nil {
 		utils.JSONError(w, "Could not fetch posts", http.StatusInternalServerError)
 		return
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(posts)
+	utils.JSONResponse(w, http.StatusOK, map[string]interface{}{
+		"data": posts,
+		"meta": map[string]interface{}{
+			"current_page": page,
+			"limit":        limit,
+			"total_items":  total,
+			"total_pages":  (total + limit - 1) / limit,
+		},
+	})
 }
 
 func (h *PostHandler) UpdatePost(w http.ResponseWriter, r *http.Request) {
@@ -155,32 +167,24 @@ func (h *PostHandler) UpdatePost(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]string{"message": "Post updated successfully"})
+	utils.JSONResponse(w, http.StatusOK, map[string]string{"message": "Post updated successfully"})
 }
 
 func (h *PostHandler) DeletePost(w http.ResponseWriter, r *http.Request) {
 	role, ok := r.Context().Value(middleware.RoleKey).(string)
-	if !ok {
+	if !ok || role != "admin" {
 		utils.JSONError(w, "Unauthorized", http.StatusUnauthorized)
 		return
 	}
 
-	id, err := strconv.Atoi(chi.URLParam(r, "id"))
-	if err != nil {
-		utils.JSONError(w, "Invalid ID", http.StatusBadRequest)
-		return
-	}
-
-	err = h.postService.DeletePost(id, role)
+	id, _ := strconv.Atoi(chi.URLParam(r, "id"))
+	err := h.postService.DeletePost(id, role)
 	if err != nil {
 		utils.JSONError(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(map[string]string{"message": "Post deleted"})
+	utils.JSONResponse(w, http.StatusOK, map[string]string{"message": "Deleted successfully"})
 }
 
 func (h *PostHandler) ToggleLike(w http.ResponseWriter, r *http.Request) {
@@ -190,16 +194,10 @@ func (h *PostHandler) ToggleLike(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	postIDStr := chi.URLParam(r, "id")
-	postID, err := strconv.Atoi(postIDStr)
-	if err != nil {
-		utils.JSONError(w, "Invalid post ID", http.StatusBadRequest)
-		return
-	}
-
+	postID, _ := strconv.Atoi(chi.URLParam(r, "id"))
 	liked, err := h.postService.ToggleLike(userID, postID)
 	if err != nil {
-		utils.JSONError(w, "Database error", http.StatusInternalServerError)
+		utils.JSONError(w, "Invalid post ID", http.StatusBadRequest)
 		return
 	}
 
@@ -208,21 +206,20 @@ func (h *PostHandler) ToggleLike(w http.ResponseWriter, r *http.Request) {
 		msg = "Post liked"
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]string{"message": msg})
+	utils.JSONResponse(w, http.StatusOK, map[string]interface{}{
+		"message": msg,
+		"liked":   liked,
+	})
 }
 
 func (h *PostHandler) GetBySlug(w http.ResponseWriter, r *http.Request) {
 	slug := chi.URLParam(r, "slug")
-
 	post, err := h.postService.GetPostBySlug(slug)
 	if err != nil {
 		utils.JSONError(w, "Post not found", http.StatusNotFound)
 		return
 	}
-
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(post)
+	utils.JSONResponse(w, http.StatusOK, post)
 }
 
 func (h *PostHandler) GetMyLikedPosts(w http.ResponseWriter, r *http.Request) {
@@ -237,7 +234,5 @@ func (h *PostHandler) GetMyLikedPosts(w http.ResponseWriter, r *http.Request) {
 		utils.JSONError(w, "Could not fetch liked posts", http.StatusInternalServerError)
 		return
 	}
-
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(posts)
+	utils.JSONResponse(w, http.StatusOK, posts)
 }

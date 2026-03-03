@@ -93,16 +93,16 @@ func (s *PostService) generateUniqueSlug(baseSlug string) (string, error) {
 			return currentSlug, nil
 		}
 
+		if counter > 100 {
+			return fmt.Sprintf("%s-%s", baseSlug, utils.RandomString(2)), nil
+		}
+
 		currentSlug = fmt.Sprintf("%s-%d", baseSlug, counter)
 		counter++
-
-		if counter > 100 {
-			return "", errors.New("too many posts with similar titles")
-		}
 	}
 }
 
-func (s *PostService) GetAllPosts(category string, search string, tags []string, page, limit int, userRole string) ([]models.Post, error) {
+func (s *PostService) GetAllPosts(category string, search string, tags []string, page, limit int, userRole string) ([]models.Post, int, error) {
 	if limit <= 0 {
 		limit = 10
 	}
