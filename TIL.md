@@ -627,4 +627,41 @@ phase 4: Final: 2026-03-03
 
     Context Keys: Used a custom `ContextKey` type for JWT claims to avoid context collisions where different middlewares might accidentally overwrite each other's data.
 
-    
+-- FRONTEND --
+
+Phase 1: Full Stack Type Safety & Authentication Architecture: 2026-03-04
+1.  Eliminating the Any Gap:
+    I learned that using any in TypeScript API client is a silent killer for full stack apps, by creating specific interfaces like `LoginCredentials` and `RegisterPayload` that mirror my Go `User` struct and handler logic, i enabled compile time validation. Now if i change a field name in Go, TypeScript will immediately flag the mismatch on the frontend.
+
+2. Next.js 15 Image Security (Local Development):
+   I discovered that the Next.js `<Image />` component requires explicit permission to render assets from a non standard port. Since my Go backend serves images from `:8080/uploads`, i had to configure `remotePatterns` in `next.config.ts`. This ensures the frontend can securely optimize and display covers and post images served from the Go server.
+
+3. The Global Auth Provider Pattern:
+   I implemented a `useAuth` hook and `AuthProvider` using React Context This solves two major problems:
+    1. Persistence: It checks `localStorage` on mount to keep the user logged in across refreshes.
+
+    2. State Sync: It allows any component(like a "Like" button or an Admin sidebar) to instantly know the user's role and authentication status without prop drilling.
+
+4. Generic API Request Wrapper:
+   Instead of repetitive fetch calls, i built a centralized `request<T>` utility. 
+   This automatically:
+    1. Injects the JWT Bearer token into headers if it exists.
+
+    2. Standardizes error response so the frontend can display the exact error message sent from the Go handler.
+
+    3. Handles "204 No Content" responses gracefully which is common in Go `Delete` or `Update` operations.
+
+
+5. Next.js 15/16 Reset: 
+    Learned how to strip default Vercel styling to create a clean, brand neutral
+   foundation using Tailwind 4.
+
+6. Type Safe API Engine: 
+    Confirmed that mapping Go structs to TypeScript interfaces in
+   `src/types/index.ts`. Allows the frontend to predict exactly what the backend sends, preventing
+    indefined errors during rendering.
+
+7. Strictt ESLint Compliance: S
+   Successfully resolved all `no-explicit-any` warnings by defining strict
+   interfaces for `LoginCredentials` and `RegisterPayload`, matching the Go backend service layer exactly.
+
