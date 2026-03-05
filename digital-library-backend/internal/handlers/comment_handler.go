@@ -1,15 +1,12 @@
 package handlers
 
 import (
-	"encoding/json"
 	"net/http"
 	"strconv"
 
-	"github.com/DataM1d/digital-library/internal/middleware"
 	"github.com/DataM1d/digital-library/internal/models"
 	"github.com/DataM1d/digital-library/internal/service"
-	"github.com/DataM1d/digital-library/pkg/utils"
-	"github.com/go-chi/chi/v5"
+	"github.com/gin-gonic/gin"
 )
 
 type CommentHandler struct {
@@ -20,42 +17,35 @@ func NewCommentHandler(s *service.CommentService) *CommentHandler {
 	return &CommentHandler{service: s}
 }
 
-func (h *CommentHandler) CreateComment(w http.ResponseWriter, r *http.Request) {
-	postID, _ := strconv.Atoi(chi.URLParam(r, "id"))
+func (h *CommentHandler) CreateComment(c *gin.Context) {
+	postID, _ := strconv.Atoi(c.Param("id"))
+	userID := c.GetInt("user_id")
 
-	val, ok := r.Context().Value(middleware.UserIDKey).(int)
-	if !ok {
-		utils.JSONError(w, "User identity not found or invalid", http.StatusUnauthorized)
+	var comment models.Comment
+	if err := c.ShouldBindJSON(&comment); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request body"})
 		return
 	}
 
-	userID := val
+	comment.PostID = postID
+	comment.UserID = userID
 
-	var c models.Comment
-	if err := json.NewDecoder(r.Body).Decode(&c); err != nil {
-		utils.JSONError(w, "Invalid request body", http.StatusBadRequest)
+	if err := h.service.AddComment(&comment); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
 
-	c.PostID = postID
-	c.UserID = userID
-
-	if err := h.service.AddComment(&c); err != nil {
-		utils.JSONError(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-
-	utils.JSONResponse(w, http.StatusCreated, c)
+	c.JSON(http.StatusCreated, comment)
 }
 
-func (h *CommentHandler) GetComments(w http.ResponseWriter, r *http.Request) {
-	postID, _ := strconv.Atoi(chi.URLParam(r, "id"))
+func (h *CommentHandler) GetComments(c *gin.Context) {
+	postID, _ := strconv.Atoi(c.Param("id"))
 
 	comments, err := h.service.GetPostComments(postID)
 	if err != nil {
-		utils.JSONError(w, err.Error(), http.StatusInternalServerError)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
 
-	utils.JSONResponse(w, http.StatusOK, comments)
+	c.JSON(http.StatusOK, comments)
 }

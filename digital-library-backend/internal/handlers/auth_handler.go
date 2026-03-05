@@ -1,12 +1,10 @@
 package handlers
 
 import (
-	"encoding/json"
 	"net/http"
 
-	"github.com/DataM1d/digital-library/pkg/utils"
-
 	"github.com/DataM1d/digital-library/internal/service"
+	"github.com/gin-gonic/gin"
 )
 
 type AuthHandler struct {
@@ -17,42 +15,43 @@ func NewAuthHandler(s *service.UserService) *AuthHandler {
 	return &AuthHandler{userService: s}
 }
 
-func (h *AuthHandler) Register(w http.ResponseWriter, r *http.Request) {
+func (h *AuthHandler) Register(c *gin.Context) {
 	var input struct {
-		Email    string `json:"email"`
-		Password string `json:"password"`
+		Username string `json:"username" binding:"required"`
+		Email    string `json:"email" binding:"required,email"`
+		Password string `json:"password" binding:"required,min=6"`
 	}
 
-	if err := json.NewDecoder(r.Body).Decode(&input); err != nil {
-		utils.JSONError(w, "Invalid input", http.StatusBadRequest)
+	if err := c.ShouldBindJSON(&input); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
-	user, err := h.userService.Register(input.Email, input.Password)
+	user, err := h.userService.Register(input.Username, input.Email, input.Password)
 	if err != nil {
-		utils.JSONError(w, "User already exists or internal error", http.StatusConflict)
+		c.JSON(http.StatusConflict, gin.H{"error": "User already exists or internal error"})
 		return
 	}
 
-	utils.JSONResponse(w, http.StatusCreated, user)
+	c.JSON(http.StatusCreated, user)
 }
 
-func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
+func (h *AuthHandler) Login(c *gin.Context) {
 	var input struct {
-		Email    string `json:"email"`
-		Password string `json:"password"`
+		Email    string `json:"email" binding:"required,email"`
+		Password string `json:"password" binding:"required"`
 	}
 
-	if err := json.NewDecoder(r.Body).Decode(&input); err != nil {
-		utils.JSONError(w, "Invalid input", http.StatusBadRequest)
+	if err := c.ShouldBindJSON(&input); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid input"})
 		return
 	}
 
 	token, err := h.userService.Login(input.Email, input.Password)
 	if err != nil {
-		utils.JSONError(w, "Invalid email or password", http.StatusUnauthorized)
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid email or password"})
 		return
 	}
 
-	utils.JSONResponse(w, http.StatusOK, map[string]string{"token": token})
+	c.JSON(http.StatusOK, gin.H{"token": token})
 }

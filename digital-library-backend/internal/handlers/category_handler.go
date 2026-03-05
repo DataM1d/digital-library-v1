@@ -1,13 +1,11 @@
 package handlers
 
 import (
-	"encoding/json"
 	"net/http"
 	"strconv"
 
 	"github.com/DataM1d/digital-library/internal/service"
-	"github.com/DataM1d/digital-library/pkg/utils"
-	"github.com/go-chi/chi/v5"
+	"github.com/gin-gonic/gin"
 )
 
 type CategoryHandler struct {
@@ -18,38 +16,38 @@ func NewCategoryHandler(s *service.CategoryService) *CategoryHandler {
 	return &CategoryHandler{service: s}
 }
 
-func (h *CategoryHandler) CreateCategory(w http.ResponseWriter, r *http.Request) {
+func (h *CategoryHandler) CreateCategory(c *gin.Context) {
 	var input struct {
-		Name string `json:"name"`
+		Name string `json:"name" binding:"required"`
 	}
-	if err := json.NewDecoder(r.Body).Decode(&input); err != nil {
-		utils.JSONError(w, "Invalid input", http.StatusBadRequest)
+	if err := c.ShouldBindJSON(&input); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid input"})
 		return
 	}
 
 	cat, err := h.service.CreateCategory(input.Name)
 	if err != nil {
-		utils.JSONError(w, err.Error(), http.StatusInternalServerError)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
 
-	utils.JSONResponse(w, http.StatusCreated, cat)
+	c.JSON(http.StatusCreated, cat)
 }
 
-func (h *CategoryHandler) GetCategories(w http.ResponseWriter, r *http.Request) {
+func (h *CategoryHandler) GetCategories(c *gin.Context) {
 	cats, err := h.service.GetAllCategories()
 	if err != nil {
-		utils.JSONError(w, err.Error(), http.StatusInternalServerError)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
-	utils.JSONResponse(w, http.StatusOK, cats)
+	c.JSON(http.StatusOK, cats)
 }
 
-func (h *CategoryHandler) DeleteCategory(w http.ResponseWriter, r *http.Request) {
-	id, _ := strconv.Atoi(chi.URLParam(r, "id"))
+func (h *CategoryHandler) DeleteCategory(c *gin.Context) {
+	id, _ := strconv.Atoi(c.Param("id"))
 	if err := h.service.DeleteCategory(id); err != nil {
-		utils.JSONError(w, err.Error(), http.StatusInternalServerError)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
-	utils.JSONResponse(w, http.StatusNoContent, nil)
+	c.Status(http.StatusNoContent)
 }
