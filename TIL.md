@@ -615,51 +615,67 @@ phase 4: Final: 2026-03-03
     The logic: Fetch all comments for a post in one query, store them ina `map[int]*Comment`, and then iterate through the slice to attach children to their respective parents using pointer references.
 
 3. Atomic Transactions with PostgreSQL in GO:
-    I implemented `tx.Begin()` and `tx.Commit()` in the `PostRepository`. This ensures that when a Post is created, its associated Tags are also linked correctly. If the tag insertion fails, the database rolls back the post creation, preventing orphan posts with missing metadata.
+   I implemented `tx.Begin()` and `tx.Commit()` in the `PostRepository`. This ensures that when a Post is created, its associated Tags are also linked correctly. If the tag insertion fails, the database rolls back the post creation, preventing orphan posts with missing metadata.
 
 4. Security & Sanitization:
-    HTML sanitization: Integrated `bluemonday` in the Service layer. This ensures that even if an admin inputs custom HTML, the system strips out dangerous tags (XSS protection) befor the data reaches the database.
+   HTML sanitization: Integrated `bluemonday` in the Service layer. This ensures that even if an admin inputs custom HTML, the system strips out dangerous tags (XSS protection) befor the data reaches the database.
 
-    Opaque Auth Errors: Standardized login error messages to be generic (invalid email or password). This prevents attackers from using the login form to discover which emails are registered in the system.
+   Opaque Auth Errors: Standardized login error messages to be generic (invalid email or password). This prevents attackers from using the login form to discover which emails are registered in the system.
 
 5. Middleware Strategy:
-    Rate Limiting: Implemented an IP Based rate limiter using `golang.org/x/time/rate` specifically for high risk routes like `/upload` and `login`.
+   Rate Limiting: Implemented an IP Based rate limiter using `golang.org/x/time/rate` specifically for high risk routes like `/upload` and `login`.
 
-    Context Keys: Used a custom `ContextKey` type for JWT claims to avoid context collisions where different middlewares might accidentally overwrite each other's data.
+   Context Keys: Used a custom `ContextKey` type for JWT claims to avoid context collisions where different middlewares might accidentally overwrite each other's data.
+
+CORRECTION OF BACKEND(Chi to Gin Migration): 2026-03-05
+
+1. The Gin Backend Evolution:
+   I learned that Gin replaces the standard http.ResponseWriter and `*http.Request` with a single, powerful `*gin.Context.` This object handles everything from getting URL parameters `(c.Param("id"))` to sending JSON responses `(c.JSON())` in one line. It simplifies the code by removing the need for manual JSON encoding.
+
+2. Grouped Routing & Middleware:
+   I learned that Gin’s router.Group() is far more intuitive for API versioning and protected routes. By using `api := r.Group("/api")`, i can apply the `AuthMiddleware` to an entire group of routes (like `/posts` and `/users/me`) at once, rather than attaching it to every single endpoint manually.
+
+3. Native JSON Binding:
+   I learned about `c.ShouldBindJSON(&input).` Instead of manually reading the request body and unmarshalling it, Gin does this automatically and can even validate the data using binding tags in the Go structs. This makes `auth_handler.go` much cleaner.
+
+4. Response Standardization:
+   I learned how to create a consistent JSON response strcutre using `gin.H()` This ensures that every time error or success message is sent, frontend receives a predictable object:
+   {
+    "status": "success",
+    "data": { ... }
+   }
 
 -- FRONTEND --
 
 Phase 1: Full Stack Type Safety & Authentication Architecture: 2026-03-04
-1.  Eliminating the Any Gap:
-    I learned that using any in TypeScript API client is a silent killer for full stack apps, by creating specific interfaces like `LoginCredentials` and `RegisterPayload` that mirror my Go `User` struct and handler logic, i enabled compile time validation. Now if i change a field name in Go, TypeScript will immediately flag the mismatch on the frontend.
+1. Eliminating the Any Gap:
+   I learned that using any in TypeScript API client is a silent killer for full stack apps, by creating specific interfaces like `LoginCredentials` and `RegisterPayload` that mirror my Go `User` struct and handler logic, i enabled compile time validation. Now if i change a field name in Go, TypeScript will immediately flag the mismatch on the frontend.
 
 2. Next.js 15 Image Security (Local Development):
    I discovered that the Next.js `<Image />` component requires explicit permission to render assets from a non standard port. Since my Go backend serves images from `:8080/uploads`, i had to configure `remotePatterns` in `next.config.ts`. This ensures the frontend can securely optimize and display covers and post images served from the Go server.
 
 3. The Global Auth Provider Pattern:
    I implemented a `useAuth` hook and `AuthProvider` using React Context This solves two major problems:
-    1. Persistence: It checks `localStorage` on mount to keep the user logged in across refreshes.
+   1. Persistence: It checks `localStorage` on mount to keep the user logged in across refreshes.
 
-    2. State Sync: It allows any component(like a "Like" button or an Admin sidebar) to instantly know the user's role and authentication status without prop drilling.
+   2. State Sync: It allows any component(like a "Like" button or an Admin sidebar) to instantly know the user's role and authentication status without prop drilling.
 
 4. Generic API Request Wrapper:
    Instead of repetitive fetch calls, i built a centralized `request<T>` utility. 
    This automatically:
-    1. Injects the JWT Bearer token into headers if it exists.
+   1. Injects the JWT Bearer token into headers if it exists.
 
-    2. Standardizes error response so the frontend can display the exact error message sent from the Go handler.
+   2. Standardizes error response so the frontend can display the exact error message sent from the Go handler.
 
-    3. Handles "204 No Content" responses gracefully which is common in Go `Delete` or `Update` operations.
-
+   3. Handles "204 No Content" responses gracefully which is common in Go `Delete` or `Update` operations.
 
 5. Next.js 15/16 Reset: 
-    Learned how to strip default Vercel styling to create a clean, brand neutral
-   foundation using Tailwind 4.
+   Learned how to strip default Vercel styling to create a clean, brand neutral foundation using Tailwind 4.
 
 6. Type Safe API Engine: 
-    Confirmed that mapping Go structs to TypeScript interfaces in
+   Confirmed that mapping Go structs to TypeScript interfaces in
    `src/types/index.ts`. Allows the frontend to predict exactly what the backend sends, preventing
-    indefined errors during rendering.
+   indefined errors during rendering.
 
 7. Strictt ESLint Compliance: S
    Successfully resolved all `no-explicit-any` warnings by defining strict

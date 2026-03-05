@@ -1,26 +1,32 @@
-Digital Library API (v2)
+Digital Library API (v3)
 
-A clean, production ready Go backend for a curated digital archive. This project implements a high performance discovery engine with a focus on Clean Architecture, relational integrity, and developer experience.
+ A clean, production ready Go backend for a curated digital archive. This project implements a high performance discovery engine with a focus on Gin Gonic efficiency, relational integrity and developer experience.
 
-The system follows a strict unidirectional data flow:
-   Handler (HTTP) -> Service (Logic) -> Repository (SQL).  
-This ensures that business rules (like slug generation or permission checks) are never bypassed and are easily testable.
+ System Architecture:
+ The system follows a strict unidirectional data flow:
+ `Handler (HTTP) -> Service (Logic) -> Repository (SQL).`  
 
-Recent Updates: The Social & Discovery Layer
-   Slug Engine: Automated SEO friendly URL generation with built in collision resolution.
-   Public Discovery: Opern routes for browsing, searching and filtering without authentication.
-   Relational Comments: Fully integrated social layer with `ON DELETE CASCADE` integrity.
+ This ensures that business rules like slug geneeration, NULL safety checks or permission assertions are never bypassed and remain easily testable.
+
+Recent Updates: The Gin & SQL Refactor:
+ Gin Gonic Migration: Switched from Chi to Gin for high performance routing, better middleware grouping and native JSON binding.
+
+ Null Safe Scanning: Implemented `COALESCE` in the Repository layer to prevent GO `Scan` panics when encountering optional database fields.
+
+ Strict Relational Integrity: Updated schema with `NOT NULL` constraints and `RESTART IDENTITY` logic for clean testing environments.
+
+ Social & Discovery: Automates SEO Friendly slug generation and a standardized Like/Unlike system.
 
 Tech Stack
    Language: GO 1.21+
-   Router: Chi (Lightweight & Idiomatic)
+   Router: Gin Gonic
    Database: PostgreSQL
    Auth: JWT & Bcrypt
    Security: Bluemonday (HTML Sanitization) & Rate Limiting
    Infrastructure: Docker & Docker Compose
 
 Architecture & Design 
-   cmd/: Entry point for server initialization and graceful shutdown logic.
+   cmd/api/: Entry point for server initialization and graceful shutdown logic.
 
    internal/handlers/: HTTP transport layer; parses JSON and handles status codes.
 
@@ -30,16 +36,16 @@ Architecture & Design
 
    pkg/: Shared utilities (JWT management, password hashing, slug engines).
 
-Key Engineering Decisions
-   Threaded Comment Trees: Implemented an `O(n)` tree building algorithm in the service layer to transform flat SQL results into nested JSON replies, avoiding the N+1 database query problem.
 
-   Collision Resistant Slugs: A recursive resolution engine ensures unique SEO friendly URLs (e.g., modern-art becomes modern-art-1 automatically).
+Key Engineering Decisions
+   The COALESCE Strategy: 
+   To solve the `Scan NULL into int` error, all optional fields (like category_id or last_modified_by) use SQL COALESCE to provide safe defaults (e.g., ID 1) during retrieval.
+
+   Context Based Auth: Middleware extracts User IDs from JWTs and injects them into the Gin context, allowing handlers to perform Role Based Access Control (RBAC) seamlessly.
    
-   Atomic Transactions: Uses `db.Begin()` for post creation to guarantee that the Post Tag relationship is committed as a single unit.
+   Atomic Transactions: Post creation uses `db.Begin()` to ensure the Post, Tags, and Categories are committed as a single unit no partial data corruption.
    
-   Type Safe Middleware: Utilizes custom ContextKey types to prevent key collisions in the request context and ensure type safe user identity assertions.
-   
-   Pagination Metadata: Standardized API responses to include total_pages, current_page, and total_items for seamless frontend integration.
+   Seed Control: Included a specialized seed.sql that uses TRUNCATE ... RESTART IDENTITY to ensure consistent IDs (1, 2, 3...) during development.
 
 API Endpoints
    Authentication:
@@ -62,24 +68,16 @@ API Endpoints
 | POST | `/posts/{id}/like` | Toggle Like/Unlike status | User |
 | POST | `/posts/{id}/comments`| Post a new comment | User |
 
-Database Schema
-   The system uses a highly relational PostgreSQL schema to minimize redundancy:
-
-   Users: Identity & Role-Based Access Control (RBAC).
-
-   Posts: Core content with blur_hash for progressive image loading.
-
-   Comments: Recursive relationship (parent_id) with ON DELETE CASCADE integrity.
-
-   Tags & Categories: Many-to-Many and One-to-Many relationships for flexible taxonomies.
-
 Quick Start
    Clone & Setup:
    git clone https://github.com/YourUsername/digital-library.git
    cd digital-library
    cp .env.example .env
 
+Database Seeding:
+Execute scripts/seed.sql to populate the library with 50 sample entries and a default admin user.
+
 Launch:
    docker-compose up --build
 
-The server will be available at http://localhost:8080.
+The Gin server will be available at http://localhost:8080.
