@@ -1,5 +1,12 @@
 import { z } from "zod";
-import { PaginatedResponse, Post, AuthResponse, LoginCredentials, RegisterPayload } from "@/types";
+import { 
+  PaginatedResponse, 
+  Post, 
+  AuthResponse, 
+  LoginCredentials, 
+  RegisterPayload,
+  PostComment 
+} from "@/types";
 
 export const UserSchema = z.object({
   id: z.number(),
@@ -73,7 +80,18 @@ export const api = {
     list: (query: string = "") => 
         request<PaginatedResponse<Post>>(`/posts${query}`),
     slug: (slug: string) => 
-        request<Post>(`/posts/s/${slug}`),
+        request<Post>(`/posts/s/${slug}`, {}, PostSchema),
+    like: (slug: string) => 
+        request<void>(`/posts/s/${slug}/like`, { method: "POST" }),
+  },
+  comments: {
+    getByPost: (slug: string) => 
+      request<PostComment[]>(`/posts/s/${slug}/comments`),
+    create: (slug: string, content: string, parentId?: number) => 
+      request<PostComment>(`/posts/s/${slug}/comments`, {
+        method: "POST",
+        body: JSON.stringify({ content, parent_id: parentId })
+      }),
   },
   auth: {
     login: (credentials: LoginCredentials) => 

@@ -37,6 +37,18 @@ export interface Post {
     updated_at: string;
     meta_description?: string;
     og_image?: string;
+    comments?: PostComment[];
+}
+
+export interface PostComment {
+  id: number;
+  post_id: number;
+  user_id: number;
+  content: string;
+  parent_id?: number | null;
+  created_at: string;
+  updated_at: string;
+  replies?: PostComment[];
 }
 
 export interface PaginatedResponse<T> {
