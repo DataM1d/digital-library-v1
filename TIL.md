@@ -699,3 +699,20 @@ phase 2: Bridge Between Go and Next.js: 2026-03-06
 
 6. API URL Prefixing:
    I learned that since the Go backend serves images from its own local folder (port 8080), the frontend (port 3000) must manually prefix the backend URL to any image path strings coming from the database, otherwise, the browser looks for the image in the wrong place.
+
+phase 3: Interactive Social Layer: 2026-03-06
+1. Optimistic UI pattern:
+   Implemented a Like system that updates the UI state immediately before the server responds. I learned that by storing the previous state and reverting it only on a `catch` block, the app feels significantly faster and more responsive to the user.
+
+2. Recursive Component Architecture:
+   Built a nested comment system where a single `Comment` component renders itself for sub replies. This taught me how to handle tree structured data coming from a relational database (PostgreSQL) and display it as an infinite depth discussion thread.
+
+3. Namespace Collision Management:
+   Discovered that `Comment` is a reserved global type in browsers (referring to DOM comment nodes). I learned the importance of using specific naming conventions like `PostComment` or `CommentType` to prevent TypeScript from confusing backend data with buitl in browser APIs.
+
+4. Async Params Unwrapping:
+   Solidified the Next.js 15 pattern of using the `use()` hook to unwrap `params` in Client Components. This ensures that dynamic route segments like `[slug]` are handled as asynchronous resources, preventing hydration mismatches.
+
+5. Authenticated Request Interceptors:
+   Refined a centralized `request` helper that automatically injets JWT Bearer tokens from `localStorage` into every outgoing API call. This ensures that protected Go routes (like `/like` or `/comments`) always receive the necessary credentials without manual boilerplate in every component.
+
