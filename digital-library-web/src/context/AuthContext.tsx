@@ -2,7 +2,7 @@
 
 import React, { createContext, useContext, useEffect, useState } from "react";
 import { User, LoginCredentials, RegisterPayload, AuthResponse } from "@/types";
-import { api } from "@/lib/api";
+import { api, UserSchema } from "@/lib/api";
 import { useRouter } from "next/navigation";
 
 interface AuthContextType {
@@ -14,7 +14,7 @@ interface AuthContextType {
   isAuthenticated: boolean;
 }
 
-const AuthContext = createContext<AuthContextType | undefined>(undefined);
+export const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
@@ -28,9 +28,12 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         const savedUser = localStorage.getItem("user");
         
         if (token && savedUser) {
-          setUser(JSON.parse(savedUser));
+          const parsedUser = JSON.parse(savedUser);
+          const validatedUser = UserSchema.parse(parsedUser);
+          setUser(validatedUser);
         }
       } catch (error) {
+        console.error("Auth initialization failed:", error);
         localStorage.removeItem("token");
         localStorage.removeItem("user");
       } finally {
