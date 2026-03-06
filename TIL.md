@@ -690,3 +690,12 @@ phase 2: Bridge Between Go and Next.js: 2026-03-06
    
 3. Context Initialization Pattern:
    I learned how to safely initialize an Auth state by checking localStorage inside a useEffect. This hydration step is crucial in Next.js 15 to prevent server/client mismatch errors.
+
+4. Dynamic Routing:
+   I learned that in Next.js 15, the params object in dynamic routes is now an asynchronous promise. You cannot just use `params.slug;` you must unwrap it using the `use(params)` hook in client components. This ensures the UI stays in sync with the URL.
+
+5. Gin CORS Preflight Logic
+   I learned that before a browser sends a real POST request, it sends an OPTIONS request called a preflight. If the Go backend doesn't handle this with a 204 No Content status, the browser blocks the login/register attempt even if the credentials are correct.
+
+6. API URL Prefixing:
+   I learned that since the Go backend serves images from its own local folder (port 8080), the frontend (port 3000) must manually prefix the backend URL to any image path strings coming from the database, otherwise, the browser looks for the image in the wrong place.
