@@ -1,4 +1,6 @@
 import { AuthProvider } from "@/context/AuthContext";
+import { Navbar } from "@/components/layout/Navbar";
+import { Toaster } from "sonner"
 import type { Metadata } from "next";
 
 import "./globals.css";
@@ -13,6 +15,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="en">
       <body className="antialiased">
         <AuthProvider>
+          <Toaster position="bottom-right" richColors />
+          <Navbar />
           {children}
         </AuthProvider>
       </body>
