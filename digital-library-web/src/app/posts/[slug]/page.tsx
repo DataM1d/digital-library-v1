@@ -4,6 +4,7 @@ import { useEffect, useState, use } from "react";
 import { api } from "@/lib/api";
 import { Post } from "@/types";
 import { CategoryPill } from "@/components/discovery/CategoryPill";
+import { CommentSection } from "@/components/social/CommentSection";
 import Image from "next/image";
 import Link from "next/link";
 import { ArrowLeft, Heart, Calendar, User } from "lucide-react";
@@ -11,16 +12,19 @@ import { ArrowLeft, Heart, Calendar, User } from "lucide-react";
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
 
 export default function PostDetailPage({ params }: { params: Promise<{ slug: string }> }) {
-  const { slug } = use(params); // Next.js 15 pattern to unwrap params
+  const { slug } = use(params);
   const [post, setPost] = useState<Post | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [likesCount, setLikesCount] = useState(0);
+  const [isLiked, setIsLiked] = useState(false);
 
   useEffect(() => {
     const fetchPost = async () => {
       try {
         const data = await api.posts.slug(slug);
         setPost(data);
+        setLikesCount(data.like_count);
       } catch (err) {
         setError("Archive not found or server error.");
         console.error(err);
@@ -30,6 +34,24 @@ export default function PostDetailPage({ params }: { params: Promise<{ slug: str
     };
     fetchPost();
   }, [slug]);
+
+  const handleLike = async () => {
+    if (!post) return;
+
+    const prevCount = likesCount;
+    const prevStatus = isLiked;
+
+    setLikesCount(prev => isLiked ? prev - 1 : prev + 1);
+    setIsLiked(!isLiked);
+
+    try {
+      await api.posts.like(post.slug);
+    } catch (err) {
+      setLikesCount(prevCount);
+      setIsLiked(prevStatus);
+      console.error(err);
+    }
+  };
 
   if (loading) return (
     <div className="flex min-h-screen items-center justify-center bg-zinc-50 dark:bg-black">
@@ -48,9 +70,8 @@ export default function PostDetailPage({ params }: { params: Promise<{ slug: str
     ? post.image_url 
     : `${API_URL}${post.image_url}`;
 
-return (
+  return (
     <main className="min-h-screen bg-zinc-50 pb-20 dark:bg-black">
-      {/* Navigation */}
       <nav className="mx-auto max-w-4xl px-6 py-8">
         <Link href="/" className="group inline-flex items-center gap-2 text-sm font-medium text-zinc-600 hover:text-black dark:text-zinc-400 dark:hover:text-white transition-colors">
           <ArrowLeft size={16} className="transition-transform group-hover:-translate-x-1" />
@@ -59,7 +80,6 @@ return (
       </nav>
 
       <article className="mx-auto max-w-4xl px-6">
-        {/* Header Section */}
         <header className="space-y-6 mb-10">
           <div className="flex items-center gap-3">
             <CategoryPill name={post.category_name} />
@@ -80,9 +100,16 @@ return (
               </div>
               <span>Archived by User #{post.created_by}</span>
             </div>
-            <button className="flex items-center gap-2 rounded-full border border-zinc-200 bg-white px-4 py-1.5 text-sm font-medium hover:bg-zinc-50 dark:border-zinc-800 dark:bg-zinc-900 dark:hover:bg-zinc-800 transition-colors">
-              <Heart size={16} className="text-zinc-400" />
-              <span>{post.like_count}</span>
+            <button 
+              onClick={handleLike}
+              className={`flex items-center gap-2 rounded-full border px-4 py-1.5 text-sm font-medium transition-all transform active:scale-95 ${
+                isLiked 
+                ? "bg-red-50 border-red-200 text-red-600 dark:bg-red-900/20 dark:border-red-800" 
+                : "bg-white border-zinc-200 text-zinc-600 hover:bg-zinc-50 dark:bg-zinc-900 dark:border-zinc-800 dark:text-zinc-400"
+              }`}
+            >
+              <Heart size={16} className={isLiked ? "fill-current" : ""} />
+              <span>{likesCount}</span>
             </button>
           </div>
         </header>
@@ -97,11 +124,16 @@ return (
           />
         </div>
 
-        <div className="prose prose-zinc dark:prose-invert max-w-none">
+        <div className="prose prose-zinc dark:prose-invert max-w-none mb-20">
           <p className="text-xl leading-relaxed text-zinc-800 dark:text-zinc-200 whitespace-pre-wrap">
             {post.content}
           </p>
         </div>
+
+       <section className="border-t border-zinc-200 pt-10 dark:border-zinc-800">
+          <h3 className="text-2xl font-bold mb-8 text-zinc-900 dark:text-white">Discussion</h3>
+          <CommentSection postSlug={slug} />
+       </section>
       </article>
     </main>
   );
