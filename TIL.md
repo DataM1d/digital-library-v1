@@ -681,3 +681,12 @@ Phase 1: Full Stack Type Safety & Authentication Architecture: 2026-03-04
    Successfully resolved all `no-explicit-any` warnings by defining strict
    interfaces for `LoginCredentials` and `RegisterPayload`, matching the Go backend service layer exactly.
 
+phase 2: Bridge Between Go and Next.js: 2026-03-06
+1. Zod as a Runtime Guardian:
+   I learned that TypeScript only checks types during development, but Zod checks them while the app is actually running. By passing the API response through `UserSchema.parse()`, I ensure that if the Go backend changes, the frontend catches the error immediately at the border instead of crashing later in a component.
+
+2. Symmetry Requirement:
+   I learned that an API Contract is a two wat street. If my TypeScript interface `(index.ts)` says a role is `'user`' | `'admin'`, but my validation schema just says `string`, TypeScript will throw an error to protect me. I must use `z.enum()` to match specific string literals.
+   
+3. Context Initialization Pattern:
+   I learned how to safely initialize an Auth state by checking localStorage inside a useEffect. This hydration step is crucial in Next.js 15 to prevent server/client mismatch errors.
