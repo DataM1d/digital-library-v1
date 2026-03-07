@@ -77,7 +77,7 @@ Phase 1: 2026-02-20
     Lesson: Backend code is unforgiving. Must be precise because there is no 'browser' to intelligently guess what you meant.
 
 4. Database/sql vs pgx Relationships
-    database/sql: This is built into Go: it's an interface. It know how to talk to any SQL database, but it does not know the 'lkanguage' of Postgres specifically.
+    database/sql: This is built into Go: it's an interface. It know how to talk to any SQL database, but it does not know the 'language' of Postgres specifically.
     
     pgx: This is the Driver. It's the translator that speaks Postgres.
     
