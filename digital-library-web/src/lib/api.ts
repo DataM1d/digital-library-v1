@@ -51,13 +51,20 @@ async function request<T>(
     schema?: z.ZodSchema<T>
 ): Promise<T> {
     const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
-    const headers = {
-        "Content-Type": "application/json",
-        ...(token && { Authorization: `Bearer ${token}` }),
-        ...options.headers,
-    };
+    const headers = new Headers(options.headers);
 
-    const response = await fetch(`${BASE_URL}${endpoint}`, { ...options, headers });
+    if (token) {
+        headers.set("Authorization", `Bearer ${token}`);
+    }
+
+    if (!(options.body instanceof FormData)) {
+        headers.set("Content-Type", "application/json");
+    }
+
+    const response = await fetch(`${BASE_URL}${endpoint}`, { 
+      ...options, 
+      headers 
+    });
 
     if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
@@ -74,7 +81,6 @@ async function request<T>(
 
     return data;
 }
-
 export const api = {
   posts: {
     list: (params: { search?: string; page?: number; limit?: number } = {}) => {
@@ -86,6 +92,11 @@ export const api = {
         const queryString = queryParams.toString();
         return request<PaginatedResponse<Post>>(`/posts${queryString ? `?${queryString}` : ""}`);
     },
+    create: (formData: FormData) => 
+        request<Post>("/posts", {
+            method: "POST",
+            body: formData,
+        }, PostSchema),
     slug: (slug: string) => 
         request<Post>(`/posts/s/${slug}`, {}, PostSchema),
     like: (slug: string) => 
