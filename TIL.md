@@ -731,3 +731,16 @@ phase 4: Reliability & Production Polish: 2026-03-06
 
 5. Toast Notifications for Feedback:
    Integrated `sonner` for global non intrusive feedback. I learned that providing immediate visual confirmation for actions (like liking or logging out) is essential for a professional feel.
+
+Phase 5: Discovery & Content Logic: 2026-03-07
+1. The Debounce Pattern:
+   Learned that hitting an API on every keystroke is a Denial of Service (DoS) attack on myself. By using `use-debounce`, I reduced server load by over 80% during user search sessions.
+
+2. URLSearchParams vs Manual Strings:
+   Discovered that manually building query strings with `?` and `&` is error prone. Using the native `URLSearchParams` API in `api.ts` ensures that special characters in search queries are automatically encoded, preventing URL breakage.
+
+3. Refinement of the API Contract:
+   Shifted the API wrapper from accepting raw strings to accepting configuration objects. This makes the code more readable and easier to extend with new parameters like `sort`, `filter`, or `limit`.
+
+4. Dynamic Empty States:
+   Learned that a "No Results" message is just as important as the results themselves. Providing feedback specific to the search query (`No results for "XYZ"`) improves the user experience significantly.
