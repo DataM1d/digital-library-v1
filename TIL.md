@@ -755,3 +755,15 @@ Phase 5: Discovery & Content Logic: 2026-03-07
 
 4. Dynamic Empty States:
    Learned that a "No Results" message is just as important as the results themselves. Providing feedback specific to the search query (`No results for "XYZ"`) improves the user experience significantly.
+
+Phase 6: Infrastructure & Media: 2026-03-07
+1. The Multipart Boundary:
+   I learned that when sending files via `FormData`, the browser must set the `Content-Type` header itself. If i manually set it to `application/json` or even `multipart/form-data`, the browser fails to include the boundarey string. This boundary is the only way the Go backend knows where the Title field ends and image binary begins.
+
+2. Byte Sniffing for Security:
+   I discovered that trusting file extensions (like.jpg) is a security risk. By using Go's http.DetectContentType on the first 512 byted of an upload, the server can verify the real file type. This prevents Extension Spoofing where a user tries to upload an executable script disguised as an image.
+
+3. Type Safe Header Managment:
+   Refactoring the api.ts to use the native `new Headers()` constructor instead of a plain object or any fixed ESLint errors and provided better type safety. It allows for dynamic header manipulation (like conditionally adding Authorization or Content-Type) without breaking TypeScript's strict rules.
+
+   
