@@ -645,6 +645,17 @@ CORRECTION OF BACKEND(Chi to Gin Migration): 2026-03-05
     "data": { ... }
    }
 
+5. Advanced Media Handling & Concurrency:
+   I learned how to move beyond simple JSON to handfle Multipart Form Data for file uploads. This required three key shifts in my approach:
+
+   Security Sniffing: 
+   I learned not to trust file extensions. By reading the first 512 bytes of an uload and using `http.DetectContentType`, I can verify the Magic Bytes to ensure a file is actually a JPEG/PNG and not a malicious script.
+
+   The kill swith: Using `http.MaxBytesReader` to hard limit request sizes (e.g, 5MB) at the network level. This prevents Denial of Service (DoS) attacks before the server even begins parsing the file.
+
+   Background Goroutines: 
+   I learned how to use the go keyword to offload expensive CPU tasks (like BlurHash generation) to a bacxkground thread. This allows the API to respond to the user instantly while the server finishes the math silently in the background. 
+
 -- FRONTEND --
 
 Phase 1: Full Stack Type Safety & Authentication Architecture: 2026-03-04
