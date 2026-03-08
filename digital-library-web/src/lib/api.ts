@@ -1,4 +1,5 @@
 import { z } from "zod";
+import axios from "axios";
 import { 
   PaginatedResponse, 
   Post, 
@@ -61,10 +62,7 @@ async function request<T>(
         headers.set("Content-Type", "application/json");
     }
 
-    const response = await fetch(`${BASE_URL}${endpoint}`, { 
-      ...options, 
-      headers 
-    });
+    const response = await fetch(`${BASE_URL}${endpoint}`, { ...options, headers });
 
     if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
@@ -72,15 +70,10 @@ async function request<T>(
     }
 
     if (response.status === 204) return {} as T; 
-    
     const data = await response.json();
-
-    if (schema) {
-        return schema.parse(data);
-    }
-
-    return data;
+    return schema ? schema.parse(data) : data;
 }
+
 export const api = {
   posts: {
     list: (params: { search?: string; page?: number; limit?: number } = {}) => {
@@ -88,23 +81,26 @@ export const api = {
         if (params.search) queryParams.append("search", params.search);
         if (params.page) queryParams.append("page", params.page.toString());
         if (params.limit) queryParams.append("limit", params.limit.toString());
-        
-        const queryString = queryParams.toString();
-        return request<PaginatedResponse<Post>>(`/posts${queryString ? `?${queryString}` : ""}`);
+        return request<PaginatedResponse<Post>>(`/posts?${queryParams.toString()}`);
     },
     create: (formData: FormData) => 
-        request<Post>("/posts", {
-            method: "POST",
-            body: formData,
-        }, PostSchema),
-    slug: (slug: string) => 
-        request<Post>(`/posts/s/${slug}`, {}, PostSchema),
-    like: (slug: string) => 
-        request<void>(`/posts/s/${slug}/like`, { method: "POST" }),
+        request<Post>("/posts", { method: "POST", body: formData }, PostSchema),
+    createWithProgress: async (formData: FormData, onProgress: (percent: number) => void) => {
+        const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
+        const response = await axios.post(`${BASE_URL}/posts`, formData, {
+            headers: { Authorization: `Bearer ${token}` },
+            onUploadProgress: (progressEvent) => {
+                const percent = Math.round((progressEvent.loaded * 100) / (progressEvent.total || 1));
+                onProgress(percent);
+            },
+        });
+        return PostSchema.parse(response.data);
+    },
+    slug: (slug: string) => request<Post>(`/posts/s/${slug}`, {}, PostSchema),
+    like: (slug: string) => request<void>(`/posts/s/${slug}/like`, { method: "POST" }),
   },
   comments: {
-    getByPost: (slug: string) => 
-      request<PostComment[]>(`/posts/s/${slug}/comments`),
+    getByPost: (slug: string) => request<PostComment[]>(`/posts/s/${slug}/comments`),
     create: (slug: string, content: string, parentId?: number) => 
       request<PostComment>(`/posts/s/${slug}/comments`, {
         method: "POST",
@@ -112,15 +108,7 @@ export const api = {
       }),
   },
   auth: {
-    login: (credentials: LoginCredentials) => 
-        request<AuthResponse>("/login", { 
-            method: "POST", 
-            body: JSON.stringify(credentials) 
-        }),
-    register: (payload: RegisterPayload) => 
-        request<AuthResponse>("/register", { 
-            method: "POST", 
-            body: JSON.stringify(payload) 
-        }),
+    login: (credentials: LoginCredentials) => request<AuthResponse>("/login", { method: "POST", body: JSON.stringify(credentials) }),
+    register: (payload: RegisterPayload) => request<AuthResponse>("/register", { method: "POST", body: JSON.stringify(payload) }),
   }
 };
