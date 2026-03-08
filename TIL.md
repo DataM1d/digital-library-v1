@@ -766,4 +766,15 @@ Phase 6: Infrastructure & Media: 2026-03-07
 3. Type Safe Header Managment:
    Refactoring the api.ts to use the native `new Headers()` constructor instead of a plain object or any fixed ESLint errors and provided better type safety. It allows for dynamic header manipulation (like conditionally adding Authorization or Content-Type) without breaking TypeScript's strict rules.
 
-   
+phase 7: Interactive UI & Stream Tracking: 2026-03-08
+1. Array State Managment in React:
+   I learned how to manage a list of strings using a dedicated UI component. By using a keyboard event listener(onKeyDown). I can intercept the Enter key to prevent form submission and instead push a new string into the state array.
+
+2. Why Fetch Fails at Progress Tracking:
+   I discovered that the native `fetch` API does not provide a way to monitor the upload progress of a request. While `fetch` is great for simple JSON, it's a black box once the request starts. To show a real percentage bar, I had to switch that specific call to `Axios`, which hooks into the `onUploadProgress` event of the underlying `XMLHttpRequest`.
+
+3. The instanceof Error Type Guard:
+   In TypeScript `catch` blocks, the error is technically `unknown`. I learned that I shouldn't just cast it to any. Instead, using `if (error instanceof Error)` is the better way to prove to the compiler that the object has a `.message` property, ensuring the code is safe from runtime crashes.
+
+4. The Ghost Form Pattern:
+   I learned how to decouple a submit button from the form's location using the form attribute (e.g., `<button form="my-id">`). This allows me to keep the Publish button in a fixed header or sidebar while the actual input fields are deep within a different part of the DOM.
