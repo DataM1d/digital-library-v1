@@ -16,11 +16,13 @@ func NewPostRepository(db *sql.DB) *PostRepository {
 	return &PostRepository{db: db}
 }
 
+// Create handles the atomic insertion of a post and its associated tags.
 func (r *PostRepository) Create(p *models.Post) error {
 	tx, err := r.db.Begin()
 	if err != nil {
 		return err
 	}
+	// Ensure rollback on failure to maintain data integrity
 	defer tx.Rollback()
 
 	query := `
@@ -63,7 +65,7 @@ func (r *PostRepository) Update(p *models.Post) error {
         SET title = $1, content = $2, image_url = $3, blur_hash = $4, alt_text = $5, 
             category_id = $6, status = $7, meta_description = $8, og_image = $9, 
             last_modified_by = $10, updated_at = NOW()
-        WHERE id = $11`
+        WHERE id = $11 AND deleted_at IS NULL`
 	_, err = tx.Exec(query,
 		p.Title, p.Content, p.ImageURL, p.BlurHash, p.AltText,
 		p.CategoryID, p.Status, p.MetaDescription, p.OGImage, p.LastModifiedBy, p.ID,
@@ -72,6 +74,7 @@ func (r *PostRepository) Update(p *models.Post) error {
 		return err
 	}
 
+	// Refresh tags: Remove existing links and re-insert new tag set
 	if _, err = tx.Exec("DELETE FROM post_tags WHERE post_id = $1", p.ID); err != nil {
 		return err
 	}
@@ -91,29 +94,30 @@ func (r *PostRepository) Update(p *models.Post) error {
 }
 
 func (r *PostRepository) Delete(id int) (string, error) {
-	var ImageURL string
-	err := r.db.QueryRow("SELECT image_url FROM posts WHERE id = $1", id).Scan(&ImageURL)
+	var imageURL string
+	err := r.db.QueryRow("SELECT image_url FROM posts WHERE id = $1", id).Scan(&imageURL)
 	if err != nil {
-		if err == sql.ErrNoRows {
-			return "", nil
-		}
 		return "", err
 	}
-	_, err = r.db.Exec("DELETE FROM posts WHERE id = $1", id)
-	return ImageURL, err
+
+	// Using UPDATE instead of DELETE to preserve data history
+	_, err = r.db.Exec("UPDATE posts SET deleted_at = NOW() WHERE id = $1", id)
+	return imageURL, err
 }
 
 func (r *PostRepository) GetAll(category string, search string, tags []string, limit, offset int, statusFilter string) ([]models.Post, int, error) {
+	// baseQuery ensures we only ever fetch artifacts that haven't been soft-deleted
 	baseQuery := `
         FROM posts p
         LEFT JOIN categories c ON p.category_id = c.id
         LEFT JOIN post_tags pt ON p.id = pt.post_id
         LEFT JOIN tags t ON pt.tag_id = t.id
-        WHERE (p.title ILIKE $1 OR p.content ILIKE $1)`
+        WHERE p.deleted_at IS NULL AND (p.title ILIKE $1 OR p.content ILIKE $1)`
 
 	args := []interface{}{"%" + search + "%"}
 	argCount := 2
 
+	// Dynamic Filter injection
 	if statusFilter != "" {
 		baseQuery += fmt.Sprintf(" AND p.status = $%d", argCount)
 		args = append(args, statusFilter)
@@ -161,6 +165,7 @@ func (r *PostRepository) GetAll(category string, search string, tags []string, l
 			return nil, 0, err
 		}
 
+		// Mapping NullStrings back to models
 		p.Content = content.String
 		p.CategoryName = catName.String
 		p.ImageURL = img.String
@@ -207,7 +212,7 @@ func (r *PostRepository) GetBySlug(slug string) (*models.Post, error) {
                p.meta_description, p.og_image, p.created_at, p.updated_at, COALESCE(c.name, '') as category_name
         FROM posts p
         LEFT JOIN categories c ON p.category_id = c.id
-        WHERE p.slug = $1`
+        WHERE p.slug = $1 AND p.deleted_at IS NULL`
 
 	var p models.Post
 	var content, img, blur, alt, sVal, status, meta, og, catName sql.NullString
@@ -233,7 +238,7 @@ func (r *PostRepository) GetBySlug(slug string) (*models.Post, error) {
 
 func (r *PostRepository) SlugExists(slug string) (bool, error) {
 	var exists bool
-	query := `SELECT EXISTS(SELECT 1 FROM posts WHERE slug = $1)`
+	query := `SELECT EXISTS(SELECT 1 FROM posts WHERE slug = $1 AND deleted_at IS NULL)`
 	err := r.db.QueryRow(query, slug).Scan(&exists)
 	return exists, err
 }
@@ -290,6 +295,7 @@ func (r *PostRepository) GetUserLikedPosts(userID int) ([]models.Post, error) {
 	return posts, nil
 }
 
+// UpdateBlurHash is called asynchronously to update the image placeholder after processing.
 func (r *PostRepository) UpdateBlurHash(id int, hash string) error {
 	query := `UPDATE posts SET blur_hash = $1, updated_at = NOW() WHERE id = $2`
 	_, err := r.db.Exec(query, hash, id)
