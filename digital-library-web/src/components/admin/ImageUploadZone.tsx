@@ -1,21 +1,24 @@
-"use client"
+"use client";
 
 import { useCallback, useState } from "react";
 import { useDropzone } from "react-dropzone";
-import { Upload, X, ImageIcon } from "lucide-react";
+import { Upload, X } from "lucide-react";
 import Image from "next/image";
 
 interface ImageUploadZoneProps {
     onFileSelect: (file: File | null) => void;
+    defaultValue?: string;
 }
 
-export function ImageUploadZone({ onFileSelect }: ImageUploadZoneProps) {
-    const [preview, setPreview] = useState<string | null>(null);
+export function ImageUploadZone({ onFileSelect, defaultValue }: ImageUploadZoneProps) {
+    const [preview, setPreview] = useState<string | null>(defaultValue || null);
 
-    const onDrop = useCallback((acceptedFiles: File[]) => {
+    const onDrop = useCallback(
+        (acceptedFiles: File[]) => {
         const file = acceptedFiles[0];
         if (file) {
-            setPreview(URL.createObjectURL(file));
+            const objectUrl = (URL.createObjectURL(file));
+            setPreview(objectUrl);
             onFileSelect((file));
         }
     }, [onFileSelect]);
@@ -26,7 +29,8 @@ export function ImageUploadZone({ onFileSelect }: ImageUploadZoneProps) {
         multiple: false,
     });
 
-    const clearFile = () => {
+    const clearFile = (e: React.MouseEvent) => {
+        e.stopPropagation();
         setPreview(null);
         onFileSelect(null);
     };

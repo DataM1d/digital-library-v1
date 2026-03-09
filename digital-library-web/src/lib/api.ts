@@ -96,6 +96,11 @@ export const api = {
         });
         return PostSchema.parse(response.data);
     },
+    update: (slug: string, formData: FormData) => 
+        request<Post>(`/posts/s/${slug}`, {
+            method: "PUT",
+            body: formData,
+        }, PostSchema),
     slug: (slug: string) => request<Post>(`/posts/s/${slug}`, {}, PostSchema),
     like: (slug: string) => request<void>(`/posts/s/${slug}/like`, { method: "POST" }),
   },
