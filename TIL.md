@@ -656,6 +656,31 @@ CORRECTION OF BACKEND(Chi to Gin Migration): 2026-03-05
    Background Goroutines: 
    I learned how to use the go keyword to offload expensive CPU tasks (like BlurHash generation) to a bacxkground thread. This allows the API to respond to the user instantly while the server finishes the math silently in the background. 
 
+6. Middleware as a Security Layer:
+   AdminOnly Bouncer: 
+   I learned how to create a middleware that reads the `role` directly from the Gin context (set by the previous Auth middleware). This ensures that even if a user is logged in, they cannot hit `/api/admin` routes unless they have the `admin` string  in their JWT. 
+
+   CORS Preflight
+   I solidified my understanding of why browsers send `OPTIONS` requests. By manually setting headers and returning `204 No Content` for `OPTIONS`, I cleared the final hurdle for the Next.js to Go communication.
+
+7. Soft Delete vs Hard Deelete Logic:
+   I implemented a Soft Delete strategy in the `post_repo.go`. Instead of using `DELETE FROM`, I use `UPDATE posts SET deleted_at = NOW()`. This taught me:
+     1. Data Retention: It's safer to hide data from the user than to destroy it.
+
+     2. Query Filtering: Every `GET` request now need to check `WHERE deleted_at IS NULL` to ensure archived posts don't show up in the public feed.
+
+8. The Ghost Method Trap:
+   I encountered the `undefined (type *handlers.CategoryHandler has no field) or method GetAll)` error. This taught me that in Go, if a method is not explicitly defined on a struct, the router cannot see it. I learned to verify that my Handler, Service and Repository all use the exact same verb (e.g, `Create` vs `CreateCategory`) to maintain the chain of command. 
+
+9. Dependency Injection & Environment Wiring:
+   I moved beyond hardocded database strings. I learned how to pull 5 distinct environment variables (`DB_HOST`, `DB_PORT`, `DB_USER`, `DB_PASS`, `DB_NAME`) and pass them at strict arguments to `database.NewPostgresDB()`. This taught me:
+     1. Argument Integrity: The order of strings passed into a function must match it's definition exactly.
+
+     2. Security: Keeping credentials out of `main.go` and in `.env` is the only way to safely push code to GitHub.
+
+11. Dynamic SQL and Filter Injection
+    I refined the GetAll method in `post_repo.go` to handle complex searching and filtering. I learned how to build dynamic SQL strings using `fmt.Sprintc` and positional arguments like $1, $2 to prevent SQL injection while allowing users to filter by category, status, or multiple tags simultaneously.
+
 -- FRONTEND --
 
 Phase 1: Full Stack Type Safety & Authentication Architecture: 2026-03-04
@@ -778,3 +803,6 @@ phase 7: Interactive UI & Stream Tracking: 2026-03-08
 
 4. The Ghost Form Pattern:
    I learned how to decouple a submit button from the form's location using the form attribute (e.g., `<button form="my-id">`). This allows me to keep the Publish button in a fixed header or sidebar while the actual input fields are deep within a different part of the DOM.
+
+5. Frontend Image Handling and UX:
+    In` ImageUploadZone.tsx`, I learned to manage client side previews using `URL.createObjectURL.` This provides instant feedback to the user before the upload begins. On the dashboard (page.tsx), I utilized Next.js Image optimization and loading skeletons to maintain high perceived performance during archive management.
