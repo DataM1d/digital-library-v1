@@ -93,16 +93,10 @@ func (r *PostRepository) Update(p *models.Post) error {
 	return tx.Commit()
 }
 
-func (r *PostRepository) Delete(id int) (string, error) {
-	var imageURL string
-	err := r.db.QueryRow("SELECT image_url FROM posts WHERE id = $1", id).Scan(&imageURL)
-	if err != nil {
-		return "", err
-	}
-
-	// Using UPDATE instead of DELETE to preserve data history
-	_, err = r.db.Exec("UPDATE posts SET deleted_at = NOW() WHERE id = $1", id)
-	return imageURL, err
+func (r *PostRepository) Delete(id int) error {
+	query := `UPDATE posts SET deleted_at = NOW() WHERE id = $1`
+	_, err := r.db.Exec(query, id)
+	return err
 }
 
 func (r *PostRepository) GetAll(category string, search string, tags []string, limit, offset int, statusFilter string) ([]models.Post, int, error) {
@@ -151,7 +145,7 @@ func (r *PostRepository) GetAll(category string, search string, tags []string, l
 	}
 	defer rows.Close()
 
-	var posts []models.Post
+	posts := []models.Post{}
 	for rows.Next() {
 		var p models.Post
 		var catName, img, blur, alt, slug, content, status sql.NullString
@@ -203,37 +197,6 @@ func (r *PostRepository) ToggleLike(userID, postID int) (bool, error) {
 		_, err = r.db.Exec("INSERT INTO post_likes (user_id, post_id) VALUES ($1, $2)", userID, postID)
 		return true, err
 	}
-}
-
-func (r *PostRepository) GetBySlug(slug string) (*models.Post, error) {
-	query := `
-        SELECT p.id, COALESCE(p.created_by, 1), COALESCE(p.category_id, 1), COALESCE(p.last_modified_by, 1), 
-               p.title, p.content, p.image_url, p.blur_hash, p.alt_text, p.slug, p.status,
-               p.meta_description, p.og_image, p.created_at, p.updated_at, COALESCE(c.name, '') as category_name
-        FROM posts p
-        LEFT JOIN categories c ON p.category_id = c.id
-        WHERE p.slug = $1 AND p.deleted_at IS NULL`
-
-	var p models.Post
-	var content, img, blur, alt, sVal, status, meta, og, catName sql.NullString
-	err := r.db.QueryRow(query, slug).Scan(
-		&p.ID, &p.CreatedBy, &p.CategoryID, &p.LastModifiedBy,
-		&p.Title, &content, &img, &blur, &alt, &sVal, &status,
-		&meta, &og, &p.CreatedAt, &p.UpdatedAt, &catName,
-	)
-	if err != nil {
-		return nil, err
-	}
-	p.Content = content.String
-	p.CategoryName = catName.String
-	p.ImageURL = img.String
-	p.BlurHash = blur.String
-	p.AltText = alt.String
-	p.Slug = sVal.String
-	p.Status = status.String
-	p.MetaDescription = meta.String
-	p.OGImage = og.String
-	return &p, nil
 }
 
 func (r *PostRepository) SlugExists(slug string) (bool, error) {
@@ -300,4 +263,69 @@ func (r *PostRepository) UpdateBlurHash(id int, hash string) error {
 	query := `UPDATE posts SET blur_hash = $1, updated_at = NOW() WHERE id = $2`
 	_, err := r.db.Exec(query, hash, id)
 	return err
+}
+
+func (r *PostRepository) GetBySlug(slug string) (*models.Post, error) {
+	query := `
+        SELECT p.id, COALESCE(p.created_by, 1), COALESCE(p.category_id, 1), COALESCE(p.last_modified_by, 1), 
+               p.title, p.content, p.image_url, p.blur_hash, p.alt_text, p.slug, p.status,
+               p.meta_description, p.og_image, p.created_at, p.updated_at, COALESCE(c.name, '') as category_name
+        FROM posts p
+        LEFT JOIN categories c ON p.category_id = c.id
+        WHERE p.slug = $1 AND p.deleted_at IS NULL`
+
+	var p models.Post
+	var content, img, blur, alt, sVal, status, meta, og, catName sql.NullString
+	err := r.db.QueryRow(query, slug).Scan(
+		&p.ID, &p.CreatedBy, &p.CategoryID, &p.LastModifiedBy,
+		&p.Title, &content, &img, &blur, &alt, &sVal, &status,
+		&meta, &og, &p.CreatedAt, &p.UpdatedAt, &catName,
+	)
+	if err != nil {
+		return nil, err
+	}
+	p.Content = content.String
+	p.CategoryName = catName.String
+	p.ImageURL = img.String
+	p.BlurHash = blur.String
+	p.AltText = alt.String
+	p.Slug = sVal.String
+	p.Status = status.String
+	p.MetaDescription = meta.String
+	p.OGImage = og.String
+	return &p, nil
+}
+
+func (r *PostRepository) GetByID(id int) (*models.Post, error) {
+	query := `
+        SELECT p.id, COALESCE(p.created_by, 1), COALESCE(p.category_id, 1), COALESCE(p.last_modified_by, 1), 
+               p.title, p.content, p.image_url, p.blur_hash, p.alt_text, p.slug, p.status,
+               p.meta_description, p.og_image, p.created_at, p.updated_at, COALESCE(c.name, '') as category_name
+        FROM posts p
+        LEFT JOIN categories c ON p.category_id = c.id
+        WHERE p.id = $1 AND p.deleted_at IS NULL`
+
+	var p models.Post
+	var content, img, blur, alt, sVal, status, meta, og, catName sql.NullString
+
+	err := r.db.QueryRow(query, id).Scan(
+		&p.ID, &p.CreatedBy, &p.CategoryID, &p.LastModifiedBy,
+		&p.Title, &content, &img, &blur, &alt, &sVal, &status,
+		&meta, &og, &p.CreatedAt, &p.UpdatedAt, &catName,
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	p.Content = content.String
+	p.CategoryName = catName.String
+	p.ImageURL = img.String
+	p.BlurHash = blur.String
+	p.AltText = alt.String
+	p.Slug = sVal.String
+	p.Status = status.String
+	p.MetaDescription = meta.String
+	p.OGImage = og.String
+
+	return &p, nil
 }

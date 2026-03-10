@@ -3,8 +3,10 @@ package service
 import (
 	"errors"
 	"fmt"
+	"log"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/DataM1d/digital-library/internal/models"
 	"github.com/DataM1d/digital-library/internal/repository"
@@ -53,7 +55,6 @@ func (s *PostService) UpdatePost(post *models.Post, userRole string, userID int)
 	post.Title = p.Sanitize(post.Title)
 	post.Content = p.Sanitize(post.Content)
 	post.LastModifiedBy = userID
-
 	if post.Status == "" {
 		post.Status = "published"
 	}
@@ -66,14 +67,22 @@ func (s *PostService) DeletePost(id int, userRole string) error {
 		return errors.New("unauthorized: only admins can delete posts")
 	}
 
-	imageURL, err := s.repo.Delete(id)
+	post, err := s.repo.GetByID(id)
 	if err != nil {
 		return err
 	}
 
-	if imageURL != "" {
-		localPath := filepath.Join(".", imageURL)
-		_ = os.Remove(localPath)
+	if err := s.repo.Delete(id); err != nil {
+		return err
+	}
+
+	if post.ImageURL != "" {
+		trimmedPath := strings.TrimPrefix(post.ImageURL, "/")
+		localPath := filepath.Join(".", trimmedPath)
+
+		if err := os.Remove(localPath); err != nil {
+			log.Printf("Non-fatal: Failed to remove physical file %s: %v", localPath, err)
+		}
 	}
 
 	return nil

@@ -61,7 +61,7 @@ func main() {
 
 		posts := api.Group("/posts")
 		{
-			posts.GET("", postHandler.GetPosts)
+			posts.GET("/", postHandler.GetPosts)
 			posts.GET("/s/:slug", postHandler.GetBySlug)
 			posts.GET("/categories", catHandler.GetCategories)
 		}
