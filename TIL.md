@@ -681,6 +681,11 @@ CORRECTION OF BACKEND(Chi to Gin Migration): 2026-03-05
 11. Dynamic SQL and Filter Injection
     I refined the GetAll method in `post_repo.go` to handle complex searching and filtering. I learned how to build dynamic SQL strings using `fmt.Sprintc` and positional arguments like $1, $2 to prevent SQL injection while allowing users to filter by category, status, or multiple tags simultaneously.
 
+12. The Assigment Mismatch & Interface Sync:
+    Problem: The Repository was returning (`string, error`) to pass a file path, but the Service expecting only error.
+
+    Solution: Decoupied the Data Fetch from the Action. The Service now calls `repo.GetById` to get the metadata (like `ImageURL`) before calling `repo.Delete(id)`. This keeps the Repository Delete method clean with a single `error` return. 
+
 -- FRONTEND --
 
 Phase 1: Full Stack Type Safety & Authentication Architecture: 2026-03-04
@@ -829,4 +834,14 @@ phase 8: Content Managment: 2026-03-10
 
    The Fix: Since the Go backend returns a 409 or 500 error due to Foreign Key constraints, the frontend catch block now identifies this specific failure and alerts the user that the category is locked by active links.
 
-   
+Phase 8 & 9: Admin Suite & Search Discovery: 20206-03-10
+1. Zod & The Null vs Empty Array Trap:
+   The Bug: Go slices declared as `var posts []models.Post` encode to `null` in JSON if empty. Zod expects an `array`, causing a frontend crash.
+
+   The Fix: *Backend: Initialize slices as `posts := []models.Post()` to ensure an empty JSON array[].
+
+   The Fix: *Frontend: Use `.nullable().transform((val) => val ?? []) in Zod as a Safet net to handle backend inconsistencies.
+
+2. Next.js image Optimization (400 Bad Request):
+   External images (even from localhost:8080) must be whistelisted in next.config.ts under `remotePatterns`. Without this, the Next.js `Image` component refuses to process the source URL.
+
