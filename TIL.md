@@ -806,3 +806,27 @@ phase 7: Interactive UI & Stream Tracking: 2026-03-08
 
 5. Frontend Image Handling and UX:
     In` ImageUploadZone.tsx`, I learned to manage client side previews using `URL.createObjectURL.` This provides instant feedback to the user before the upload begins. On the dashboard (page.tsx), I utilized Next.js Image optimization and loading skeletons to maintain high perceived performance during archive management.
+
+
+phase 8: Content Managment: 2026-03-10
+1. Safe Error Catching (Unknow vs Any):
+   I learned that even in `catch` blocks, using `any` is dangerous.
+    1. The Change: Switched to `catch (error: unknown)` combined with an `instanceof Error` check.
+
+    2. The Lesson: This forces the code to verify that an error object actually has a `.message` property before trying to display it in a toast, preventing "Cannot read property of undefined" errors during failed API calls.
+
+2. Optimistic Deletion Logic:
+   I implemented a balance between UI speed and data integrity.
+
+   The Logic: For deletions, I update the UI locally first (`filter`) so the user feels no lag.
+
+   Conflict Resolution: For additions, I perform a full re fetch. This ensures the frontend and the Go backend agree on the new category's ID and slug, which are generated server side.
+
+3. Foreign Key UI Feedback
+   I learned how to translate database constraints into user friendly messages.
+
+   The Scenario: Deleting a category that has posts.
+
+   The Fix: Since the Go backend returns a 409 or 500 error due to Foreign Key constraints, the frontend catch block now identifies this specific failure and alerts the user that the category is locked by active links.
+
+   
