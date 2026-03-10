@@ -14,13 +14,8 @@ func NewCategoryRepository(db *sql.DB) *CategoryRepository {
 	return &CategoryRepository{db: db}
 }
 
-func (r *CategoryRepository) Create(c *models.Category) error {
-	query := `INSERT INTO categories (name, slug) VALUES ($1, $2) RETURNING id, created_at`
-	return r.db.QueryRow(query, c.Name, c.Slug).Scan(&c.ID, &c.CreatedAt)
-}
-
 func (r *CategoryRepository) GetAll() ([]models.Category, error) {
-	rows, err := r.db.Query("SELECT id, name, slug, created_at FROM categories ORDER BY name ASC")
+	rows, err := r.db.Query("SELECT id, name, slug FROM categories ORDER BY name ASC")
 	if err != nil {
 		return nil, err
 	}
@@ -29,12 +24,17 @@ func (r *CategoryRepository) GetAll() ([]models.Category, error) {
 	var categories []models.Category
 	for rows.Next() {
 		var c models.Category
-		if err := rows.Scan(&c.ID, &c.Name, &c.Slug, &c.CreatedAt); err != nil {
+		if err := rows.Scan(&c.ID, &c.Name, &c.Slug); err != nil {
 			return nil, err
 		}
 		categories = append(categories, c)
 	}
 	return categories, nil
+}
+
+func (r *CategoryRepository) Create(c *models.Category) error {
+	query := `INSERT INTO categories (name, slug) VALUES ($1, $2) RETURNING id`
+	return r.db.QueryRow(query, c.Name, c.Slug).Scan(&c.ID)
 }
 
 func (r *CategoryRepository) Delete(id int) error {

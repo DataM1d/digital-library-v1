@@ -78,7 +78,7 @@ func main() {
 		admin.Use(middleware.AuthMiddleware(), middleware.AdminOnly())
 		{
 			admin.POST("/posts", postHandler.CreatePost)
-			admin.PUT("/posts/:id", postHandler.UpdatePost)
+			admin.PUT("/posts/:slug", postHandler.UpdatePost)
 			admin.DELETE("/posts/:id", postHandler.DeletePost)
 
 			admin.POST("/categories", catHandler.CreateCategory)

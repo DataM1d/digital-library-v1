@@ -156,23 +156,43 @@ func (h *PostHandler) GetPosts(c *gin.Context) {
 func (h *PostHandler) UpdatePost(c *gin.Context) {
 	role := c.GetString("role")
 	userID := c.GetInt("user_id")
-	id, _ := strconv.Atoi(c.Param("id"))
+
+	slug := c.Param("slug")
+	existingPost, err := h.postService.GetPostBySlug(slug)
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Post not found"})
+		return
+	}
 
 	categoryID, _ := strconv.Atoi(c.PostForm("category_id"))
-
 	post := models.Post{
-		ID:             id,
+		ID:             existingPost.ID,
 		Title:          c.PostForm("title"),
 		Content:        c.PostForm("content"),
 		CategoryID:     categoryID,
 		Status:         c.PostForm("status"),
 		LastModifiedBy: userID,
 		Tags:           c.PostFormArray("tags"),
+		ImageURL:       existingPost.ImageURL,
 	}
 
-	file, _, err := c.Request.FormFile("image")
+	file, header, err := c.Request.FormFile("image")
 	if err == nil {
 		defer file.Close()
+
+		ext := filepath.Ext(header.Filename)
+		Filename := fmt.Sprintf("%d-%s%s", time.Now().Unix(), uuid.New().String(), ext)
+		path := filepath.Join("uploads", Filename)
+
+		dst, _ := os.Create(path)
+		io.Copy(dst, file)
+		dst.Close()
+
+		post.ImageURL = "/iploads/" + Filename
+		go h.generateBlurHashInBackground(path, post.ID)
+
+		oldPath := filepath.Join(".", existingPost.ImageURL)
+		os.Remove(oldPath)
 	}
 
 	if err := h.postService.UpdatePost(&post, role, userID); err != nil {
@@ -185,18 +205,24 @@ func (h *PostHandler) UpdatePost(c *gin.Context) {
 
 func (h *PostHandler) DeletePost(c *gin.Context) {
 	role := c.GetString("role")
-	if role != "admin" {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
-		return
+	param := c.Param("id")
+	id, err := strconv.Atoi(param)
+
+	if err != nil {
+		post, err := h.postService.GetPostBySlug(param)
+		if err != nil {
+			c.JSON(http.StatusNotFound, gin.H{"error": "Post not found"})
+			return
+		}
+		id = post.ID
 	}
 
-	id, _ := strconv.Atoi(c.Param("id"))
 	if err := h.postService.DeletePost(id, role); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"message": "Artifact successfully archived"})
+	c.JSON(http.StatusOK, gin.H{"message": "Artifact successfully removed from disk and database"})
 }
 
 func (h *PostHandler) ToggleLike(c *gin.Context) {
