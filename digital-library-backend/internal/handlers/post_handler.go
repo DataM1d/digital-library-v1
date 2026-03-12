@@ -32,72 +32,67 @@ func (h *PostHandler) CreatePost(c *gin.Context) {
 	role := c.GetString("role")
 	userID := c.GetInt("user_id")
 
-	const maxFileSize = 5 << 20
-	c.Request.Body = http.MaxBytesReader(c.Writer, c.Request.Body, maxFileSize+(1<<10))
-
+	const maxFileSize = 10 << 20
 	if err := c.Request.ParseMultipartForm(maxFileSize); err != nil {
-		c.JSON(http.StatusRequestEntityTooLarge, gin.H{"error": "File too large (Max 5MB)"})
+		c.JSON(http.StatusRequestEntityTooLarge, gin.H{"error": "Payload too large"})
 		return
 	}
 
 	file, header, err := c.Request.FormFile("image")
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Image field is required"})
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Image is required"})
 		return
 	}
 	defer file.Close()
 
 	buff := make([]byte, 512)
-	if _, err := file.Read(buff); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to read file header"})
-		return
-	}
+	file.Read(buff)
 	file.Seek(0, 0)
-
 	contentType := http.DetectContentType(buff)
-	allowedTypes := map[string]bool{
-		"image/jpeg": true,
-		"image/png":  true,
-		"image/webp": true,
-	}
+	allowedTypes := map[string]bool{"image/jpeg": true, "image/png": true, "image/webp": true}
 
 	if !allowedTypes[contentType] {
-		c.JSON(http.StatusUnsupportedMediaType, gin.H{"error": "Only JPEG, PNG, and WEBP are allowed"})
+		c.JSON(http.StatusUnsupportedMediaType, gin.H{"error": "Invalid image format"})
 		return
 	}
 
 	ext := filepath.Ext(header.Filename)
 	fileName := fmt.Sprintf("%d-%s%s", time.Now().Unix(), uuid.New().String(), ext)
-	path := filepath.Join("uploads", fileName)
+	uploadDir := "./uploads"
+	path := filepath.Join(uploadDir, fileName)
 
-	if _, err := os.Stat("uploads"); os.IsNotExist(err) {
-		os.Mkdir("uploads", os.ModePerm)
+	if err := os.MkdirAll(uploadDir, 0755); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create directory"})
+		return
 	}
 
 	dst, err := os.Create(path)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create file"})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Internal file error"})
 		return
 	}
 	defer dst.Close()
 
 	if _, err := io.Copy(dst, file); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to save file"})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Save failed"})
 		return
 	}
 
-	categoryID, _ := strconv.Atoi(c.Request.FormValue("category_id"))
+	categoryID, _ := strconv.Atoi(c.PostForm("category_id"))
 	post := models.Post{
-		Title:      c.Request.FormValue("title"),
-		Content:    c.Request.FormValue("content"),
+		Title:      c.PostForm("title"),
+		Content:    c.PostForm("content"),
 		CategoryID: categoryID,
 		ImageURL:   "/uploads/" + fileName,
 		BlurHash:   "processing",
 		Status:     c.DefaultPostForm("status", "published"),
-		AltText:    c.Request.FormValue("alt_text"),
+		AltText:    c.PostForm("alt_text"),
+		Tags:       c.Request.MultipartForm.Value["tags"],
+		CreatedBy:  userID,
 	}
 
 	if err = h.postService.CreateLibraryEntry(&post, role, userID); err != nil {
+		os.Remove(path)
 		c.JSON(http.StatusForbidden, gin.H{"error": err.Error()})
 		return
 	}
@@ -105,6 +100,56 @@ func (h *PostHandler) CreatePost(c *gin.Context) {
 	go h.generateBlurHashInBackground(path, post.ID)
 
 	c.JSON(http.StatusCreated, post)
+}
+
+func (h *PostHandler) UpdatePost(c *gin.Context) {
+	role := c.GetString("role")
+	userID := c.GetInt("user_id")
+	slug := c.Param("slug")
+
+	existingPost, err := h.postService.GetPostBySlug(slug)
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Artifact not found"})
+		return
+	}
+
+	categoryID, _ := strconv.Atoi(c.PostForm("category_id"))
+	post := models.Post{
+		ID:             existingPost.ID,
+		Title:          c.PostForm("title"),
+		Content:        c.PostForm("content"),
+		CategoryID:     categoryID,
+		Status:         c.PostForm("status"),
+		AltText:        c.PostForm("alt_text"),
+		LastModifiedBy: userID,
+		Tags:           c.Request.MultipartForm.Value["tags"],
+		ImageURL:       existingPost.ImageURL,
+	}
+
+	file, header, err := c.Request.FormFile("image")
+	if err == nil {
+		defer file.Close()
+		ext := filepath.Ext(header.Filename)
+		newFileName := fmt.Sprintf("%d-%s%s", time.Now().Unix(), uuid.New().String(), ext)
+		newPath := filepath.Join("./uploads", newFileName)
+
+		dst, _ := os.Create(newPath)
+		io.Copy(dst, file)
+		dst.Close()
+
+		post.ImageURL = "/uploads/" + newFileName
+		go h.generateBlurHashInBackground(newPath, post.ID)
+
+		oldFilePath := filepath.Join(".", existingPost.ImageURL)
+		os.Remove(oldFilePath)
+	}
+
+	if err := h.postService.UpdatePost(&post, role, userID); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, post)
 }
 
 func (h *PostHandler) generateBlurHashInBackground(filePath string, postID int) {
@@ -153,69 +198,14 @@ func (h *PostHandler) GetPosts(c *gin.Context) {
 	})
 }
 
-func (h *PostHandler) UpdatePost(c *gin.Context) {
-	role := c.GetString("role")
-	userID := c.GetInt("user_id")
+func (h *PostHandler) GetBySlug(c *gin.Context) {
 	slug := c.Param("slug")
-
-	existingPost, err := h.postService.GetPostBySlug(slug)
+	post, err := h.postService.GetPostBySlug(slug)
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "Post not found"})
+		c.JSON(http.StatusNotFound, gin.H{"error": "Artifact not found"})
 		return
 	}
-
-	categoryID, _ := strconv.Atoi(c.PostForm("category_id"))
-	post := models.Post{
-		ID:             existingPost.ID,
-		Title:          c.PostForm("title"),
-		Content:        c.PostForm("content"),
-		CategoryID:     categoryID,
-		Status:         c.PostForm("status"),
-		LastModifiedBy: userID,
-		Tags:           c.PostFormArray("tags"),
-		ImageURL:       existingPost.ImageURL,
-	}
-
-	file, header, err := c.Request.FormFile("image")
-	if err == nil {
-		defer file.Close()
-
-		buff := make([]byte, 512)
-		file.Read(buff)
-		file.Seek(0, 0)
-		contentType := http.DetectContentType(buff)
-
-		allowed := map[string]bool{"image/jpeg": true, "image/png": true, "image/webp": true}
-		if !allowed[contentType] {
-			c.JSON(http.StatusUnsupportedMediaType, gin.H{"error": "Invalid image type"})
-			return
-		}
-
-		ext := filepath.Ext(header.Filename)
-		Filename := fmt.Sprintf("%d-%s%s", time.Now().Unix(), uuid.New().String(), ext)
-		path := filepath.Join("uploads", Filename)
-
-		dst, _ := os.Create(path)
-		if _, err := io.Copy(dst, file); err != nil {
-			dst.Close()
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to save file"})
-			return
-		}
-		dst.Close()
-
-		post.ImageURL = "/uploads/" + Filename
-		go h.generateBlurHashInBackground(path, post.ID)
-
-		oldPath := filepath.Join(".", existingPost.ImageURL)
-		os.Remove(oldPath)
-	}
-
-	if err := h.postService.UpdatePost(&post, role, userID); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-		return
-	}
-
-	c.JSON(http.StatusOK, gin.H{"message": "Post updated successfully"})
+	c.JSON(http.StatusOK, post)
 }
 
 func (h *PostHandler) DeletePost(c *gin.Context) {
@@ -237,7 +227,7 @@ func (h *PostHandler) DeletePost(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"message": "Artifact successfully removed from disk and database"})
+	c.JSON(http.StatusOK, gin.H{"message": "Artifact removed"})
 }
 
 func (h *PostHandler) ToggleLike(c *gin.Context) {
@@ -256,16 +246,6 @@ func (h *PostHandler) ToggleLike(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{"message": msg, "liked": liked})
-}
-
-func (h *PostHandler) GetBySlug(c *gin.Context) {
-	slug := c.Param("slug")
-	post, err := h.postService.GetPostBySlug(slug)
-	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "Artifact not found"})
-		return
-	}
-	c.JSON(http.StatusOK, post)
 }
 
 func (h *PostHandler) GetMyLikedPosts(c *gin.Context) {
