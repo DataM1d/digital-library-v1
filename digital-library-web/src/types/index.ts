@@ -27,14 +27,15 @@ export interface Post {
     title: string;
     content: string;
     image_url: string;
-    blur_hash: string;
+    blur_hash?: string;
     alt_text: string;
     slug: string;
     status: 'published' | 'draft';
     category_name: string; 
-    tags: string[]
+    tags: string[];
     created_at: string;
     updated_at: string;
+    user_has_liked?: boolean;
     meta_description?: string;
     og_image?: string;
     comments?: PostComment[];
@@ -44,21 +45,12 @@ export interface PostComment {
   id: number;
   post_id: number;
   user_id: number;
+  username: string;
   content: string;
   parent_id?: number | null;
   created_at: string;
   updated_at: string;
   replies?: PostComment[];
-}
-
-export interface PaginatedResponse<T> {
-    data: T[];
-    meta: {
-        current_page: number;
-        limit: number;
-        total_items: number;
-        total_pages: number;
-    };
 }
 
 export interface PaginationMeta {
@@ -68,11 +60,15 @@ export interface PaginationMeta {
   limit: number;
 }
 
-export interface AuthResponse {
-    token: string;
-    user?: User;
+export interface PaginatedResponse<T> {
+    data: T[];
+    meta: PaginationMeta;
 }
 
+export interface AuthResponse {
+    token: string;
+    user: User;
+}
 
 export interface Category {
     id: number;
@@ -87,4 +83,14 @@ export interface Category {
 export interface CategoryPayload {
   name: string;
   description?: string;
+}
+
+export interface AuthContextType {
+  user: User | null;
+  loading: boolean;
+  mounted: boolean;
+  login: (credentials: LoginCredentials) => Promise<void>;
+  register: (payload: RegisterPayload) => Promise<void>;
+  logout: () => void;
+  isAuthenticated: boolean;
 }
