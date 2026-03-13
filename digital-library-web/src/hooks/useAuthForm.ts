@@ -1,6 +1,9 @@
+"use client";
+
 import { useState } from "react";
-import { useAuth } from "@/context/AuthContext";
+import { useAuth } from "@/hooks/useAuth";
 import { LoginCredentials, RegisterPayload } from "@/types";
+import { isAxiosError } from "axios"; 
 
 type AuthMode = "login" | "register";
 
@@ -27,15 +30,28 @@ export function useAuthForm(mode: AuthMode) {
 
     try {
       if (mode === "register") {
-        await register(formData as RegisterPayload);
+        const payload: RegisterPayload = {
+          username: formData.username,
+          email: formData.email,
+          password: formData.password
+        };
+        await register(payload);
       } else {
-        await login({ 
+        const credentials: LoginCredentials = { 
           email: formData.email, 
           password: formData.password 
-        } as LoginCredentials);
+        };
+        await login(credentials);
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Authentication failed");
+      if (isAxiosError(err)) {
+        const apiError = err.response?.data?.error || "Authentication failed";
+        setError(apiError);
+      } else if (err instanceof Error) {
+        setError(err.message);
+      } else {
+        setError("An unexpected error occurred");
+      }
     } finally {
       setIsLoading(false);
     }

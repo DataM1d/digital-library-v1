@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { api } from "@/lib/api";
 import { Post } from "@/types";
+import { toast } from "sonner";
 
 export function usePostDetail(slug: string) {
   const [post, setPost] = useState<Post | null>(null);
@@ -27,16 +28,19 @@ export function usePostDetail(slug: string) {
 
   const toggleLike = async () => {
     if (!post) return;
+
     const prevCount = likesCount;
     const prevStatus = isLiked;
+
     setLikesCount(prev => isLiked ? prev - 1 : prev + 1);
     setIsLiked(!isLiked);
 
     try {
-        await api.posts.like(post.id);
+      await api.posts.like(post.id);
     } catch (err) {
         setLikesCount(prevCount);
         setIsLiked(prevStatus);
+        toast.error("Feedback synchronization failed");
         console.error(err);
     }
   };
