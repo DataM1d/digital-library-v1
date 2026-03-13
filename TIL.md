@@ -659,7 +659,7 @@ CORRECTION OF BACKEND(Chi to Gin Migration): 2026-03-05
 6. Middleware as a Security Layer:
    AdminOnly Bouncer: 
    I learned how to create a middleware that reads the `role` directly from the Gin context (set by the previous Auth middleware). This ensures that even if a user is logged in, they cannot hit `/api/admin` routes unless they have the `admin` string  in their JWT. 
-
+w
    CORS Preflight
    I solidified my understanding of why browsers send `OPTIONS` requests. By manually setting headers and returning `204 No Content` for `OPTIONS`, I cleared the final hurdle for the Next.js to Go communication.
 
@@ -915,3 +915,41 @@ Refactor: Fullstack Synchronization. Slug, Services and State: 2026-03-12
    Concept: Generating a BlurHash is CPU intensive and shouldn't block the user from seeing a "Success" message.
 
    The Win: Used Go's Goroutines (go h.generateBlurHashInBackground(...)) to process the image and update the database in the background. This keeps the API response time under 100ms while still providing a premium UI experience.
+
+Refactor: Go Backend Refactoring & Clean Architecture: 2026-03-13
+1. Interface Driven Development:
+   I learned that using `interfaces` for Services and Repositories is the standardf for proffesional Go projects.
+   
+   Why: it decouples the Handlers from the logic. The Handler no longer cares how a post is created, only that the PostService has a method to do it. 
+
+   Benefit: Makes the code significantly easier to unit test using mocks.
+
+2. The DBTX Pattern for Transactions:
+   Handling database transactions across multiple repositories (e.g, saving a Post and then its Tags) is tricky in Go.
+
+   Solution: Implementing a `DBTX` interface that both `*sql.DB` and `*sql.Tx` satisfy.
+
+   Implementation: The `WithTransaction` wrapper allows the Service layer to decide where a transiction starts and ends, keeping the logic out of the Repository.
+
+3. Atomic Tag Synchronixation:
+   Previously, tags were an afterthought. I implemented a `SyncPostTags` logic:
+   1. Delete old associations in a transaction.
+
+   2. `INSERT ... ON CONFLICT DO UPDATE` for new tags.
+
+   3. Re link tags to the post. This ensures the database never has orphaned 
+      tags or incosistent states.
+
+4. Contextual Data (The Like Logic):
+   I realized the backend should not just return raw data: it needs to return `contextual state`
+
+   Problem: The frontend needs to know if the current user has liked a post.
+
+   Fix: Updated `GetAll` and `GetBySlug` to accept a `currentUserID` and perform a `LEFT JOIN` or `EXISTS` check in SQL to return a `UserHasLiked` boolean.
+
+5. Pagination Metadata:
+   Instead of just returning a slice of items. Proffesional APIs return a metadata object.
+
+   This structure matches the frontend expectations perfectly and makes the UI logic (like "Next/Prev" buttons) much cleaner.
+
+   Structure: `{ "data": [...], "meta": { "current_page": 1, "total_items": 87, ... } }`
