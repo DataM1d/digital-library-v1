@@ -14,7 +14,7 @@ export default function CreatePostPage() {
     image_url: "",
     category_id: 1,
     category_name: "",
-    status: "published" as "published" | "draft",
+    status: "published",
     created_at: new Date().toISOString(),
     updated_at: new Date().toISOString(),
     created_by: 0,

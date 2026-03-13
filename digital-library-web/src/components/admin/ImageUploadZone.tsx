@@ -1,73 +1,96 @@
 "use client";
 
-import { useCallback, useState } from "react";
-import { useDropzone } from "react-dropzone";
+import { useCallback, MouseEvent } from "react";
+import { useDropzone, DropzoneRootProps, DropzoneInputProps } from "react-dropzone";
 import { Upload, X } from "lucide-react";
 import Image from "next/image";
+import { useImagePreview } from "@/hooks/useImagePreview";
 
 interface ImageUploadZoneProps {
-    onFileSelect: (file: File | null) => void;
-    defaultValue?: string;
+  onFileSelect: (file: File | null) => void;
+  defaultValue?: string;
+}
+
+interface PlaceholderProps {
+  getRootProps: <T extends DropzoneRootProps>(props?: T) => T;
+  getInputProps: <T extends DropzoneInputProps>(props?: T) => T;
+  isDragActive: boolean;
 }
 
 export function ImageUploadZone({ onFileSelect, defaultValue }: ImageUploadZoneProps) {
-    const [preview, setPreview] = useState<string | null>(defaultValue || null);
+  const { preview, handleFileChange } = useImagePreview(defaultValue);
 
-    const onDrop = useCallback(
-        (acceptedFiles: File[]) => {
-        const file = acceptedFiles[0];
-        if (file) {
-            const objectUrl = (URL.createObjectURL(file));
-            setPreview(objectUrl);
-            onFileSelect((file));
-        }
-    }, [onFileSelect]);
+  const onDrop = useCallback(
+    (acceptedFiles: File[]) => {
+      const file = acceptedFiles[0] || null;
+      handleFileChange(file);
+      onFileSelect(file);
+    },
+    [handleFileChange, onFileSelect]
+  );
 
-    const { getRootProps, getInputProps, isDragActive } = useDropzone({
-        onDrop,
-        accept: { "image/*": [".jpeg", ".png", ".webp"] },
-        multiple: false,
-    });
+  const { getRootProps, getInputProps, isDragActive } = useDropzone({
+    onDrop,
+    accept: { "image/*": [".jpeg", ".png", ".webp"] },
+    multiple: false,
+  });
 
-    const clearFile = (e: React.MouseEvent) => {
-        e.stopPropagation();
-        setPreview(null);
-        onFileSelect(null);
-    };
+  const clearFile = (e: MouseEvent) => {
+    e.stopPropagation();
+    handleFileChange(null);
+    onFileSelect(null);
+  };
 
-    return (
-        <div className="w-full">
+  return (
+    <div className="w-full">
       {preview ? (
-        <div className="relative aspect-video w-full overflow-hidden rounded-2xl border border-zinc-200 dark:border-zinc-800">
-          <Image src={preview} alt="Preview" fill className="object-cover" />
-          <button
-            onClick={clearFile}
-            className="absolute right-4 top-4 rounded-full bg-black/50 p-2 text-white backdrop-blur-md hover:bg-black/70"
-          >
-            <X size={18} />
-          </button>
-        </div>
+        <PreviewCard src={preview} onClear={clearFile} />
       ) : (
-        <div
-          {...getRootProps()}
-          className={`flex flex-col items-center justify-center rounded-2xl border-2 border-dashed p-12 transition-all cursor-pointer
-            ${isDragActive 
-              ? "border-black bg-zinc-50 dark:border-white dark:bg-zinc-900" 
-              : "border-zinc-200 hover:border-zinc-400 dark:border-zinc-800 dark:hover:border-zinc-600"
-            }`}
-        >
-          <input {...getInputProps()} />
-          <div className="rounded-full bg-zinc-100 p-4 dark:bg-zinc-900 mb-4">
-            <Upload className="text-zinc-500" size={24} />
-          </div>
-          <p className="text-sm font-medium text-zinc-900 dark:text-zinc-100">
-            Click to upload or drag and drop
-          </p>
-          <p className="mt-1 text-xs text-zinc-500">
-            JPG, PNG or WEBP (MAX. 5MB)
-          </p>
-        </div>
+        <UploadPlaceholder 
+          getRootProps={getRootProps} 
+          getInputProps={getInputProps} 
+          isDragActive={isDragActive} 
+        />
       )}
+    </div>
+  );
+}
+
+function PreviewCard({ src, onClear }: { src: string; onClear: (e: MouseEvent) => void }) {
+  return (
+    <div className="relative aspect-video w-full overflow-hidden rounded-2xl border border-zinc-200 dark:border-zinc-800 shadow-inner bg-zinc-100 dark:bg-zinc-900">
+      <Image src={src} alt="Upload preview" fill className="object-cover" priority />
+      <button
+        type="button"
+        onClick={onClear}
+        className="absolute right-4 top-4 rounded-full bg-black/60 p-2 text-white backdrop-blur-md hover:bg-red-500 transition-colors"
+      >
+        <X size={18} />
+      </button>
+    </div>
+  );
+}
+
+function UploadPlaceholder({ getRootProps, getInputProps, isDragActive }: PlaceholderProps) {
+  return (
+    <div
+      {...getRootProps()}
+      className={`flex flex-col items-center justify-center rounded-3xl border-2 border-dashed p-12 transition-all cursor-pointer
+        ${isDragActive 
+          ? "border-black bg-zinc-50 dark:border-white dark:bg-zinc-900" 
+          : "border-zinc-200 hover:border-zinc-800 dark:border-zinc-800 dark:hover:border-zinc-400"
+        }`}
+    >
+      <input {...getInputProps()} />
+      <div className="rounded-2xl bg-zinc-100 p-4 dark:bg-zinc-900 mb-4 text-zinc-400">
+        <Upload size={24} />
+      </div>
+      <p className="text-sm font-bold text-zinc-900 dark:text-zinc-100">
+        Drop your artifact here
+      </p>
+      <p className="mt-1 text-xs text-zinc-500">
+        JPG, PNG or WEBP (MAX. 5MB)
+      </p>
     </div>
   );
 }
