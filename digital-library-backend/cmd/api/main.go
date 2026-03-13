@@ -35,9 +35,10 @@ func main() {
 	postRepo := repository.NewPostRepository(db)
 	catRepo := repository.NewCategoryRepository(db)
 	commentRepo := repository.NewCommentRepository(db)
+	tagRepo := repository.NewTagRepository(db)
 
 	userService := service.NewUserService(userRepo)
-	postService := service.NewPostService(postRepo)
+	postService := service.NewPostService(postRepo, tagRepo)
 	catService := service.NewCategoryService(catRepo)
 	commentService := service.NewCommentService(commentRepo, postRepo)
 

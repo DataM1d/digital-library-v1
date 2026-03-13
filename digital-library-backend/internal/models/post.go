@@ -13,6 +13,7 @@ type Post struct {
 	CategoryID      int       `json:"category_id"`
 	LastModifiedBy  int       `json:"last_modified_by"`
 	LikeCount       int       `json:"like_count"`
+	UserHasLiked    bool      `json:"user_has_liked"`
 	Title           string    `json:"title"`
 	Content         string    `json:"content"`
 	ImageURL        string    `json:"image_url"`
