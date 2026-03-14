@@ -9,10 +9,10 @@ import (
 )
 
 type CommentHandler struct {
-	service *service.CommentService
+	service service.CommentService
 }
 
-func NewCommentHandler(s *service.CommentService) *CommentHandler {
+func NewCommentHandler(s service.CommentService) *CommentHandler {
 	return &CommentHandler{service: s}
 }
 
@@ -21,7 +21,7 @@ func (h *CommentHandler) GetByPost(c *gin.Context) {
 
 	comments, err := h.service.GetCommentsByPostSlug(slug)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch commentx"})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch comments"})
 		return
 	}
 

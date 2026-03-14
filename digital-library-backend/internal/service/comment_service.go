@@ -7,20 +7,25 @@ import (
 	"github.com/DataM1d/digital-library/internal/repository"
 )
 
-type CommentService struct {
-	repo     *repository.CommentRepository
-	postRepo *repository.PostRepository //For slug lookups
+type CommentService interface {
+	GetCommentsByPostSlug(slug string) ([]models.Comment, error)
+	CreateCommentBySlug(slug string, comment *models.Comment) error
 }
 
-func NewCommentService(repo *repository.CommentRepository, postRepo *repository.PostRepository) *CommentService {
-	return &CommentService{
+type commentService struct {
+	repo     *repository.CommentRepository
+	postRepo *repository.PostRepository
+}
+
+func NewCommentService(repo *repository.CommentRepository, postRepo *repository.PostRepository) CommentService {
+	return &commentService{
 		repo:     repo,
 		postRepo: postRepo,
 	}
 }
 
-func (s *CommentService) GetCommentsByPostSlug(slug string) ([]models.Comment, error) {
-	post, err := s.postRepo.GetBySlug(slug)
+func (s *commentService) GetCommentsByPostSlug(slug string) ([]models.Comment, error) {
+	post, err := s.postRepo.GetBySlug(slug, 0)
 	if err != nil {
 		return nil, err
 	}
@@ -28,12 +33,12 @@ func (s *CommentService) GetCommentsByPostSlug(slug string) ([]models.Comment, e
 	return s.buildCommentTree(post.ID)
 }
 
-func (s *CommentService) CreateCommentBySlug(slug string, comment *models.Comment) error {
+func (s *commentService) CreateCommentBySlug(slug string, comment *models.Comment) error {
 	if comment.Content == "" {
-		return errors.New("Comment content cannot be empty!")
+		return errors.New("comment content cannot be empty")
 	}
 
-	post, err := s.postRepo.GetBySlug(slug)
+	post, err := s.postRepo.GetBySlug(slug, 0)
 	if err != nil {
 		return err
 	}
@@ -42,7 +47,7 @@ func (s *CommentService) CreateCommentBySlug(slug string, comment *models.Commen
 	return s.repo.Create(comment)
 }
 
-func (s *CommentService) buildCommentTree(postID int) ([]models.Comment, error) {
+func (s *commentService) buildCommentTree(postID int) ([]models.Comment, error) {
 	flatComments, err := s.repo.GetByPostID(postID)
 	if err != nil {
 		return nil, err
