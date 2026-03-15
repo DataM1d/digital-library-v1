@@ -1,16 +1,29 @@
 package utils
 
 import (
-	"regexp"
 	"strings"
+	"unicode"
 )
 
 func GenerateSlug(title string) string {
-	slug := strings.ToLower(title)
-	re := regexp.MustCompile(`[^a-z0-9\s]+`)
-	slug = re.ReplaceAllString(slug, "")
-	slug = strings.ReplaceAll(slug, " ", "-")
-	re = regexp.MustCompile(`-+`)
-	slug = re.ReplaceAllString(slug, "-")
-	return strings.Trim(slug, "-")
+	var buf strings.Builder
+	buf.Grow(len(title))
+	lastWasDash := true
+
+	for _, r := range strings.ToLower(title) {
+		switch {
+		case unicode.IsLetter(r) || unicode.IsDigit(r):
+			buf.WriteRune(r)
+			lastWasDash = false
+		case unicode.IsSpace(r) || r == '-' || r == '_':
+			if !lastWasDash {
+				buf.WriteRune('-')
+				lastWasDash = true
+			}
+		}
+	}
+
+	s := buf.String()
+
+	return strings.TrimSuffix(s, "-")
 }

@@ -986,3 +986,37 @@ Refactor: Go Backend Architecture Refactor: 2026-03-14
    DRY Principles:
    Extracted image processing logic in `PostHandler` into a helper method(`saveUploadedFile`) used by both Create and Update operations.
 
+Go Backend, Interface Patterns: 2026-03-15
+1. High Performance String Manipulation:
+   What:
+   Moved away from multiple Regex passes in `slug.go` to a single pass `strings.Builder` approach.
+
+   Why: Regex is expensive because it compiles a finite automation. Using `unicode.IsLetter` and `strings.Builder` with `buf.Grow()` minimizes memory allocations and CPU cycles.
+
+2. API Response Standardization:
+   What: Created.  unified APIResponse wrapper in `utils/response.go`.
+
+   Why: 
+   Frontend developers need a predictable structure. Every response now includes a success bollean, an optional `data` object, and a standard `error` string.
+
+   New Utility: 
+   Implemented  `AbortWithError` to ensure that failed middleware (like Auth) stops the execution chain immediately in Gin.
+
+3. Middleware & Memory Safety:
+   What: Added a background cleanup goroutine (`cleanupLimiters`) to the Rate Limiter.
+
+   Why: 
+   A simple map based rate limiter will grow indefinitely as a new IPs connect, leading to a memory leak.
+
+   Implementation: Used a `sync.Mutex` for thread safety and a ticker based goroutine to prune "stale" IP entries every few minutes.
+
+5. Security Refinement:
+   Passwords: 
+   Added a 72 byte ceilling check for Bcrypt (since Bcrypt ignores anything beyond 72 bytes anyway).
+
+   JWT:
+   Moved to `jwt/v5` and added `IssuedAt`, `NotBefore`, and `Subject` claims for better token audiabillity and secuirty against replay attacks.
+
+   Sanitization: 
+   Integrated `bluemonday` in the service layer (not the handler) to ensure data is clean before it ever touches the database.
+

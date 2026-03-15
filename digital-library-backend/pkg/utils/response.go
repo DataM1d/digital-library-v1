@@ -1,24 +1,35 @@
 package utils
 
 import (
-	"encoding/json"
 	"net/http"
+
+	"github.com/gin-gonic/gin"
 )
 
-type ErrorResponse struct {
-	Error string `json:"error"`
+type APIResponse struct {
+	Success bool        `json:"success"`
+	Data    interface{} `json:"data,omitempty"`
+	Error   string      `json:"error,omitempty"`
+	Message string      `json:"message,omitempty"`
 }
 
-func JSONError(w http.ResponseWriter, message string, code int) {
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(code)
-	json.NewEncoder(w).Encode(ErrorResponse{Error: message})
+func Success(c *gin.Context, data interface{}) {
+	c.JSON(http.StatusOK, APIResponse{
+		Success: true,
+		Data:    data,
+	})
 }
 
-func JSONResponse(w http.ResponseWriter, code int, payload interface{}) {
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(code)
-	if payload != nil {
-		json.NewEncoder(w).Encode(payload)
-	}
+func Created(c *gin.Context, data interface{}) {
+	c.JSON(http.StatusCreated, APIResponse{
+		Success: true,
+		Data:    data,
+	})
+}
+
+func Error(c *gin.Context, code int, message string) {
+	c.AbortWithStatusJSON(code, APIResponse{
+		Success: false,
+		Error:   message,
+	})
 }
