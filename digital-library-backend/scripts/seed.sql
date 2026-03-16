@@ -16,19 +16,21 @@ DO $$
 BEGIN 
     FOR i IN 1..50 LOOP
         INSERT INTO posts (
-            title, content, image_url, blur_hash, slug, status, 
-            category_id, created_by, last_modified_by, meta_description, created_at, updated_at
+            title, content, image_url, blur_hash, alt_text,
+            slug, status, category_id, created_by, last_modified_by,
+            meta_description, og_image, created_at, updated_at
         )
         VALUES (
             'Library Entry #' || i,
-            'This is deep archive entry number ' || i || '. It contains historical data and metadata for testing.',
+            'This is deep archive entry number ' || i || '.',
             '/uploads/seed-placeholder.jpg',
             'LEHV6nWB2yk8pyo0adRj00WV8DNG',
-            'library-entry-' || i,
+            'Image of Library Entry ' || i,
             'published',
             (SELECT id FROM categories ORDER BY RANDOM() LIMIT 1), 
             1, 1,
             'SEO description for artifact ' || i,
+            '/uploads/seed-placeholder.jpg',
             NOW() - (i || ' hours')::interval,
             NOW()
         );
