@@ -8,8 +8,8 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/DataM1d/digital-library/internal/domain"
 	"github.com/DataM1d/digital-library/internal/models"
-	"github.com/DataM1d/digital-library/internal/repository"
 	"github.com/DataM1d/digital-library/pkg/utils"
 	"github.com/microcosm-cc/bluemonday"
 )
@@ -26,11 +26,11 @@ type PostService interface {
 }
 
 type postService struct {
-	repo    *repository.PostRepository
-	tagRepo *repository.TagRepository
+	repo    domain.PostRepo
+	tagRepo domain.TagRepo
 }
 
-func NewPostService(repo *repository.PostRepository, tagRepo *repository.TagRepository) PostService {
+func NewPostService(repo domain.PostRepo, tagRepo domain.TagRepo) PostService {
 	return &postService{
 		repo:    repo,
 		tagRepo: tagRepo,
@@ -42,9 +42,11 @@ func (s *postService) CreateLibraryEntry(post *models.Post, tagNames []string, u
 		return errors.New("unauthorized: system access restricted to admin")
 	}
 
-	p := bluemonday.UGCPolicy()
-	post.Title = p.Sanitize(post.Title)
-	post.Content = p.Sanitize(post.Content)
+	strict := bluemonday.StrictPolicy()
+	ugc := bluemonday.UGCPolicy()
+
+	post.Title = strict.Sanitize(post.Title)
+	post.Content = ugc.Sanitize(post.Content)
 	post.CreatedBy = userID
 
 	if post.Status == "" {
@@ -58,7 +60,7 @@ func (s *postService) CreateLibraryEntry(post *models.Post, tagNames []string, u
 	}
 	post.Slug = finalSlug
 
-	return s.repo.WithTransaction(func(txRepo *repository.PostRepository) error {
+	return s.repo.WithTransaction(func(txRepo domain.PostRepo) error {
 		if err := txRepo.Create(post); err != nil {
 			return err
 		}
@@ -77,12 +79,14 @@ func (s *postService) UpdatePost(post *models.Post, tagNames []string, userRole 
 		return errors.New("unauthorized: system update restricted")
 	}
 
-	p := bluemonday.UGCPolicy()
-	post.Title = p.Sanitize(post.Title)
-	post.Content = p.Sanitize(post.Content)
+	strict := bluemonday.StrictPolicy()
+	ugc := bluemonday.UGCPolicy()
+
+	post.Title = strict.Sanitize(post.Title)
+	post.Content = ugc.Sanitize(post.Content)
 	post.LastModifiedBy = userID
 
-	return s.repo.WithTransaction(func(txRepo *repository.PostRepository) error {
+	return s.repo.WithTransaction(func(txRepo domain.PostRepo) error {
 		if err := txRepo.Update(post); err != nil {
 			return err
 		}
