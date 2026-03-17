@@ -3,8 +3,9 @@ package service
 import (
 	"errors"
 
+	"github.com/DataM1d/digital-library/internal/domain"
 	"github.com/DataM1d/digital-library/internal/models"
-	"github.com/DataM1d/digital-library/internal/repository"
+	"github.com/microcosm-cc/bluemonday"
 )
 
 type CommentService interface {
@@ -13,11 +14,11 @@ type CommentService interface {
 }
 
 type commentService struct {
-	repo     *repository.CommentRepository
-	postRepo *repository.PostRepository
+	repo     domain.CommentRepo
+	postRepo domain.PostRepo
 }
 
-func NewCommentService(repo *repository.CommentRepository, postRepo *repository.PostRepository) CommentService {
+func NewCommentService(repo domain.CommentRepo, postRepo domain.PostRepo) CommentService {
 	return &commentService{
 		repo:     repo,
 		postRepo: postRepo,
@@ -37,6 +38,9 @@ func (s *commentService) CreateComment(slug string, comment *models.Comment) err
 	if comment.Content == "" {
 		return errors.New("comment content cannot be empty")
 	}
+
+	p := bluemonday.StrictPolicy()
+	comment.Content = p.Sanitize(comment.Content)
 
 	post, err := s.postRepo.GetBySlug(slug, 0)
 	if err != nil {
@@ -59,15 +63,21 @@ func (s *commentService) buildCommentTree(postID int) ([]models.Comment, error) 
 		commentMap[flatComments[i].ID] = &flatComments[i]
 	}
 
-	var tree []models.Comment
-	for _, c := range flatComments {
-		if c.ParentID == nil {
-			tree = append(tree, *commentMap[c.ID])
-		} else {
+	for i := range flatComments {
+		c := &flatComments[i]
+		if c.ParentID != nil {
 			if parent, exists := commentMap[*c.ParentID]; exists {
-				parent.Replies = append(parent.Replies, *commentMap[c.ID])
+				parent.Replies = append(parent.Replies, *c)
 			}
 		}
 	}
+
+	var tree []models.Comment
+	for i := range flatComments {
+		if flatComments[i].ParentID == nil {
+			tree = append(tree, *commentMap[flatComments[i].ID])
+		}
+	}
+
 	return tree, nil
 }
