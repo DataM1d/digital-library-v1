@@ -19,13 +19,13 @@ func main() {
 		log.Println("No .env file found")
 	}
 
-	host := os.Getenv("DB_HOST")
-	portDB := os.Getenv("DB_PORT")
-	userDB := os.Getenv("DB_USER")
-	passDB := os.Getenv("DB_PASSWORD")
-	nameDB := os.Getenv("DB_NAME")
-
-	db, err := database.NewPostgresDB(host, portDB, userDB, passDB, nameDB)
+	db, err := database.NewPostgresDB(
+		os.Getenv("DB_HOST"),
+		os.Getenv("DB_PORT"),
+		os.Getenv("DB_USER"),
+		os.Getenv("DB_PASSWORD"),
+		os.Getenv("DB_NAME"),
+	)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -47,14 +47,20 @@ func main() {
 	catHandler := handlers.NewCategoryHandler(catService)
 	commentHandler := handlers.NewCommentHandler(commentService)
 
-	r := gin.Default()
-	r.MaxMultipartMemory = 8 << 20 // 8 MiB
+	r := gin.New()
+
+	r.Use(gin.Recovery())
+	r.Use(middleware.LoggerMiddleware())
 	r.Use(middleware.CORSMiddleware())
+	r.Use(middleware.SecurityMiddleware())
+	r.Use(middleware.RateLimitMiddleware())
+
+	r.MaxMultipartMemory = 8 << 20
 
 	if _, err := os.Stat("./uploads"); os.IsNotExist(err) {
 		os.MkdirAll("./uploads", 0755)
 	}
-	r.Static("/uploads", "./uploads") //Static file serving for <Image /> tag
+	r.Static("/uploads", "./uploads")
 
 	api := r.Group("/api")
 	{
@@ -86,7 +92,6 @@ func main() {
 			admin.POST("/posts", postHandler.CreatePost)
 			admin.PUT("/posts/:slug", postHandler.UpdatePost)
 			admin.DELETE("/posts/:id", postHandler.DeletePost)
-
 			admin.POST("/categories", catHandler.CreateCategory)
 			admin.DELETE("/categories/:id", catHandler.DeleteCategory)
 		}

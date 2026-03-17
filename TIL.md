@@ -1056,4 +1056,35 @@ Database Hardening: 2026-03-16
    Why: 
    By mmatching the frontend validation to the database constraints, unified Contract is created. The frontend knows exactly what the database will provide, and the database knows exactly what the frontend is allowed to send.
 
+Engineering Sprint: Digital Library 2026-03-17
+1. Architectural Evloution:
+   I moved the project from a basic structure to a Repository Service Handler pattern:
+
+   Interfaces: 
+   Created an `interfaces.go` to decouple logic. This allows for easier testing and ensures that the Services do not care how the database works, only that the data arrives.
+
+   Dependency Injection:
+   In `main.go`, i manually wired the Onion: Repo -> Service -> Handler. This makes the system scalable and predictable.
+
+2. Security & Middleware:
+   Built a multi layered defense system to protect the Go Backend.
+   1. Rate Limiting:
+      Implemented a Token Bucket algorithm (`golang.org/x/time/rate`). It handles bursts of 5 requests but prevents spam.
+
+   2. Security Headers:
+      Added `secuirty.go` to inject `X Frame Options`, `CSP`, and `HSTS`.
+
+   3. Structured Logging: 
+      Replaced default Gin logs with a custom `logger.go` that tracks latency and HTTP status codes in a clean format.
    
+   4. CORS: 
+      Configured for local development to allow the React frontend to communicate without browser blocks.
+
+3. Testing & Reliability:
+   Achieved high coverage across the core business logic:
+   1. Unit Tests: 
+      Created `_test.go` files for Slug generation and all Services (`User`, `Post`, `Comment`, `Category`).
+
+   2. Zero Value: 
+      Discovered that Go defaults `time.Time` to `0001-01-01`. Fixed by ensuring SQL `SELECT` statements explicitly include `created_at` and scanning them into the struct.
+
