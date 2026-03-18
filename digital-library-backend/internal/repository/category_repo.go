@@ -1,19 +1,24 @@
 package repository
 
 import (
+	"context"
+
+	"github.com/DataM1d/digital-library/internal/domain"
 	"github.com/DataM1d/digital-library/internal/models"
 )
 
 type CategoryRepository struct {
-	db DBTX
+	db domain.DBTX
 }
 
-func NewCategoryRepository(db DBTX) *CategoryRepository {
+func NewCategoryRepository(db domain.DBTX) *CategoryRepository {
 	return &CategoryRepository{db: db}
 }
 
-func (r *CategoryRepository) GetAll() ([]models.Category, error) {
-	rows, err := r.db.Query("SELECT id, name, slug, created_at FROM categories ORDER BY name ASC")
+func (r *CategoryRepository) GetAll(ctx context.Context) ([]models.Category, error) {
+	query := `SELECT id, name, slug, created_at FROM categories ORDER BY name ASC`
+
+	rows, err := r.db.QueryContext(ctx, query)
 	if err != nil {
 		return nil, err
 	}
@@ -30,12 +35,13 @@ func (r *CategoryRepository) GetAll() ([]models.Category, error) {
 	return categories, nil
 }
 
-func (r *CategoryRepository) Create(c *models.Category) error {
+func (r *CategoryRepository) Create(ctx context.Context, c *models.Category) error {
 	query := `INSERT INTO categories (name, slug) VALUES ($1, $2) RETURNING id`
-	return r.db.QueryRow(query, c.Name, c.Slug).Scan(&c.ID)
+	return r.db.QueryRowContext(ctx, query, c.Name, c.Slug).Scan(&c.ID)
 }
 
-func (r *CategoryRepository) Delete(id int) error {
-	_, err := r.db.Exec("DELETE FROM categories WHERE id = $1", id)
+func (r *CategoryRepository) Delete(ctx context.Context, id int) error {
+	query := `DELETE FROM categories WHERE id = $1`
+	_, err := r.db.ExecContext(ctx, query, id)
 	return err
 }
