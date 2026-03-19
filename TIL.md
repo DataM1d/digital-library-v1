@@ -1160,3 +1160,23 @@ Engineering Srint: Domain Driven Interfaces & Context Propagation: 2026-03-18
    Request Context: Dies as soon as the HTTP response is sent.
 
    Background Context: Used `context.Background()` with a manual `context.WithTimeout` for the `BlurHash` generation goroutine. This ensures the image processing finishes even after the user receives their "201 Created" status.
+
+Engineering Sprint: Domain Driven Refactor 2026-03-19
+1. Advanced Pointer Logic in Tree Construction:
+   Problem:
+   Building a nested comments tree from a flat SQL result set often leads to a "Value Copy" traps. Appending to a slice in Go creates a copy, meaning updates to a parent's `Replies` might be lost if not handled via pointers.
+
+   Solution: Implemented a 3 pass pointer map algorithm:
+    1. Map Pass: Create a `map[int]*models.Comnment` to stabilize memory adress
+
+    2. Nesting Pass: Iterate through the map to append children to their respective pointer referenced parents.
+
+    3. Root Pass: Extract only the top level nodews where `ParentID == nil` to return the final tree.
+
+2. Pure Service Pattern:
+   Optimization: Shifted responsibility for ID fetching to the Handler/Router layer.
+
+   Result: 
+   The `CommentService` no longer needs to call `PostRepo` to find a post by slug. It recieves the postID directly. This simplified the service logic and made unit test 2x faster byu reducing the need for complex mocks.
+
+
