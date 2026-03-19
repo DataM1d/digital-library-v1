@@ -2,29 +2,31 @@ package handlers
 
 import (
 	"net/http"
+	"strconv"
 
-	"github.com/DataM1d/digital-library/internal/models"
-	"github.com/DataM1d/digital-library/internal/service"
+	"github.com/DataM1d/digital-library/internal/domain"
 	"github.com/gin-gonic/gin"
 )
 
 type CommentHandler struct {
-	commentService service.CommentService
+	commentService domain.CommentService
 }
 
-func NewCommentHandler(s service.CommentService) *CommentHandler {
+func NewCommentHandler(s domain.CommentService) *CommentHandler {
 	return &CommentHandler{commentService: s}
 }
 
 func (h *CommentHandler) GetByPost(c *gin.Context) {
-	slug := c.Param("slug")
-	if slug == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Post identifier required"})
+	ctx := c.Request.Context()
+
+	param := c.Param("id")
+	postID, err := strconv.Atoi(param)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Numeric Post ID required for comments"})
 		return
 	}
 
-	comments, err := h.commentService.GetCommentsByPostSlug(slug)
-
+	comments, err := h.commentService.GetCommentsByPost(ctx, postID)
 	if err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "Comments not found for this artifact"})
 		return
@@ -34,14 +36,18 @@ func (h *CommentHandler) GetByPost(c *gin.Context) {
 }
 
 func (h *CommentHandler) Create(c *gin.Context) {
-	slug := c.Param("slug")
-	val, exists := c.Get("user_id")
-	userID, ok := val.(int)
+	ctx := c.Request.Context()
 
-	if !exists || !ok {
+	postID, err := strconv.Atoi(c.Param("id"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid Post ID"})
+		return
+	}
+
+	userID := c.GetInt("user_id")
+	if userID == 0 {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "Session expired or invalid"})
 		return
-
 	}
 
 	var input struct {
@@ -54,13 +60,8 @@ func (h *CommentHandler) Create(c *gin.Context) {
 		return
 	}
 
-	comment := &models.Comment{
-		UserID:   userID,
-		Content:  input.Content,
-		ParentID: input.ParentID,
-	}
-
-	if err := h.commentService.CreateComment(slug, comment); err != nil {
+	comment, err := h.commentService.AddComment(ctx, postID, userID, input.Content, input.ParentID)
+	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}

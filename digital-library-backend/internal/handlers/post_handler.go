@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"context"
 	"fmt"
 	"image"
 	_ "image/gif"
@@ -13,18 +14,18 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/DataM1d/digital-library/internal/domain"
 	"github.com/DataM1d/digital-library/internal/models"
-	"github.com/DataM1d/digital-library/internal/service"
 	"github.com/bbrks/go-blurhash"
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 )
 
 type PostHandler struct {
-	postService service.PostService
+	postService domain.PostService
 }
 
-func NewPostHandler(s service.PostService) *PostHandler {
+func NewPostHandler(s domain.PostService) *PostHandler {
 	return &PostHandler{postService: s}
 }
 
@@ -68,6 +69,7 @@ func (h *PostHandler) saveUploadedFile(c *gin.Context) (string, string, error) {
 }
 
 func (h *PostHandler) CreatePost(c *gin.Context) {
+	ctx := c.Request.Context()
 	role := c.GetString("role")
 	userID := c.GetInt("user_id")
 
@@ -97,7 +99,7 @@ func (h *PostHandler) CreatePost(c *gin.Context) {
 		CreatedBy:  userID,
 	}
 
-	if err = h.postService.CreateLibraryEntry(&post, tagNames, role, userID); err != nil {
+	if err = h.postService.CreateLibraryEntry(ctx, &post, tagNames, role, userID); err != nil {
 		os.Remove(localPath)
 		c.JSON(http.StatusForbidden, gin.H{"error": err.Error()})
 		return
@@ -108,11 +110,12 @@ func (h *PostHandler) CreatePost(c *gin.Context) {
 }
 
 func (h *PostHandler) UpdatePost(c *gin.Context) {
+	ctx := c.Request.Context()
 	role := c.GetString("role")
 	userID := c.GetInt("user_id")
 	slug := c.Param("slug")
 
-	existingPost, err := h.postService.GetPostBySlug(slug, userID)
+	existingPost, err := h.postService.GetPostBySlug(ctx, slug, userID)
 	if err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "Artifact not found"})
 		return
@@ -140,7 +143,7 @@ func (h *PostHandler) UpdatePost(c *gin.Context) {
 		os.Remove(oldFilePath)
 	}
 
-	if err := h.postService.UpdatePost(&post, tagNames, role, userID); err != nil {
+	if err := h.postService.UpdatePost(ctx, &post, tagNames, role, userID); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
@@ -149,6 +152,7 @@ func (h *PostHandler) UpdatePost(c *gin.Context) {
 }
 
 func (h *PostHandler) GetPosts(c *gin.Context) {
+	ctx := c.Request.Context()
 	search := c.Query("search")
 	category := c.Query("category")
 	tags := c.QueryArray("tags")
@@ -158,9 +162,8 @@ func (h *PostHandler) GetPosts(c *gin.Context) {
 	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
 	limit, _ := strconv.Atoi(c.DefaultQuery("limit", "12"))
 
-	posts, meta, err := h.postService.GetAllPosts(category, search, tags, page, limit, role, userID)
+	posts, meta, err := h.postService.GetAllPosts(ctx, category, search, tags, page, limit, role, userID)
 	if err != nil {
-		fmt.Printf("[SQL ERROR] GetAllPosts: %v\n", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Internal server error"})
 		return
 	}
@@ -172,9 +175,10 @@ func (h *PostHandler) GetPosts(c *gin.Context) {
 }
 
 func (h *PostHandler) GetBySlug(c *gin.Context) {
+	ctx := c.Request.Context()
 	slug := c.Param("slug")
 	userID := c.GetInt("user_id")
-	post, err := h.postService.GetPostBySlug(slug, userID)
+	post, err := h.postService.GetPostBySlug(ctx, slug, userID)
 	if err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "Artifact not found"})
 		return
@@ -183,13 +187,14 @@ func (h *PostHandler) GetBySlug(c *gin.Context) {
 }
 
 func (h *PostHandler) DeletePost(c *gin.Context) {
+	ctx := c.Request.Context()
 	role := c.GetString("role")
 	param := c.Param("id")
 	userID := c.GetInt("user_id")
 
 	id, err := strconv.Atoi(param)
 	if err != nil {
-		post, err := h.postService.GetPostBySlug(param, userID)
+		post, err := h.postService.GetPostBySlug(ctx, param, userID)
 		if err != nil {
 			c.JSON(http.StatusNotFound, gin.H{"error": "Post not found"})
 			return
@@ -197,7 +202,7 @@ func (h *PostHandler) DeletePost(c *gin.Context) {
 		id = post.ID
 	}
 
-	if err := h.postService.DeletePost(id, role); err != nil {
+	if err := h.postService.DeletePost(ctx, id, role); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
@@ -206,10 +211,11 @@ func (h *PostHandler) DeletePost(c *gin.Context) {
 }
 
 func (h *PostHandler) ToggleLike(c *gin.Context) {
+	ctx := c.Request.Context()
 	userID := c.GetInt("user_id")
 	postID, _ := strconv.Atoi(c.Param("id"))
 
-	liked, err := h.postService.ToggleLike(userID, postID)
+	liked, err := h.postService.ToggleLike(ctx, userID, postID)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid operation"})
 		return
@@ -224,8 +230,9 @@ func (h *PostHandler) ToggleLike(c *gin.Context) {
 }
 
 func (h *PostHandler) GetMyLikedPosts(c *gin.Context) {
+	ctx := c.Request.Context()
 	userID := c.GetInt("user_id")
-	posts, err := h.postService.GetLikedPosts(userID)
+	posts, err := h.postService.GetLikedPosts(ctx, userID)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Could not fetch liked collection"})
 		return
@@ -234,6 +241,9 @@ func (h *PostHandler) GetMyLikedPosts(c *gin.Context) {
 }
 
 func (h *PostHandler) generateBlurHashInBackground(filePath string, postID int) {
+	bgCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second) // Background tasks get a fresh context because the request context dies when the response is sent
+	defer cancel()
+
 	file, err := os.Open(filePath)
 	if err != nil {
 		return
@@ -250,5 +260,5 @@ func (h *PostHandler) generateBlurHashInBackground(filePath string, postID int) 
 		return
 	}
 
-	_ = h.postService.UpdateBlurHash(postID, hash)
+	_ = h.postService.UpdateBlurHash(bgCtx, postID, hash)
 }

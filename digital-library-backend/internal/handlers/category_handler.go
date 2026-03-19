@@ -4,19 +4,22 @@ import (
 	"net/http"
 	"strconv"
 
-	"github.com/DataM1d/digital-library/internal/service"
+	"github.com/DataM1d/digital-library/internal/domain"
 	"github.com/gin-gonic/gin"
 )
 
 type CategoryHandler struct {
-	categoryService service.CategoryService
+	categoryService domain.CategoryService
 }
 
-func NewCategoryHandler(s service.CategoryService) *CategoryHandler {
+func NewCategoryHandler(s domain.CategoryService) *CategoryHandler {
 	return &CategoryHandler{categoryService: s}
 }
 
 func (h *CategoryHandler) CreateCategory(c *gin.Context) {
+	ctx := c.Request.Context()
+	role := c.GetString("role")
+
 	var input struct {
 		Name string `json:"name" binding:"required"`
 	}
@@ -26,9 +29,9 @@ func (h *CategoryHandler) CreateCategory(c *gin.Context) {
 		return
 	}
 
-	cat, err := h.categoryService.CreateCategory(input.Name)
+	cat, err := h.categoryService.CreateCategory(ctx, input.Name, role)
 	if err != nil {
-		c.JSON(http.StatusConflict, gin.H{"error": "Category already exists"})
+		c.JSON(http.StatusConflict, gin.H{"error": err.Error()})
 		return
 	}
 
@@ -36,7 +39,9 @@ func (h *CategoryHandler) CreateCategory(c *gin.Context) {
 }
 
 func (h *CategoryHandler) GetCategories(c *gin.Context) {
-	cats, err := h.categoryService.GetAllCategories()
+	ctx := c.Request.Context()
+
+	cats, err := h.categoryService.GetCategories(ctx)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Taxonomy retrieval failed"})
 		return
@@ -45,13 +50,16 @@ func (h *CategoryHandler) GetCategories(c *gin.Context) {
 }
 
 func (h *CategoryHandler) DeleteCategory(c *gin.Context) {
+	ctx := c.Request.Context()
+	role := c.GetString("role")
+
 	id, err := strconv.Atoi(c.Param("id"))
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid category ID"})
 		return
 	}
 
-	if err := h.categoryService.DeleteCategory(id); err != nil {
+	if err := h.categoryService.DeleteCategory(ctx, id, role); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
