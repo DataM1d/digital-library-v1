@@ -10,4 +10,8 @@ export const api = {
   comments: commentApi
 }
 
+export * from "./api/posts";
+export * from "./api/auth";
+export * from "./api/admin";
+export * from "./api/comment";
 export * from "./api/schemas";

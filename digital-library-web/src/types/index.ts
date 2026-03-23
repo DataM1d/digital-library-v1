@@ -65,6 +65,11 @@ export interface PaginatedResponse<T> {
     meta: PaginationMeta;
 }
 
+export interface FileUploadResponse {
+  url: string;
+  Filename: string;
+  blur_hash?: string;
+}
 export interface AuthResponse {
     token: string;
     user: User;
@@ -94,3 +99,4 @@ export interface AuthContextType {
   logout: () => void;
   isAuthenticated: boolean;
 }
+
