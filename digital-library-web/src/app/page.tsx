@@ -5,27 +5,29 @@ import { CategoryFilter } from "@/components/archive/CategoryFilter";
 import { getPosts, getCategories } from "@/lib/api";
 import { Post } from "@/types";
 interface HomePageProps {
-  searchParams: {
+  searchParams: Promise<{
     search?: string;
     category?: string;
     page?: string;
-  };
+  }>;
 }
 
 export default async function HomePage({ searchParams }: HomePageProps) {
-  const query = searchParams.search || "";
-  const category = searchParams.category || "";
-  const page = Number(searchParams.page) || 1;
+  const resolvedParams = await searchParams;
+
+  const query = resolvedParams.search || "";
+  const category = resolvedParams.category || "";
+  const page = Number(resolvedParams.page) || 1;
 
   const [postsResponse, categories] = await Promise.all([
     getPosts({ search: query, category, page }),
-    getCategories()
+    getCategories().catch(() => [])
   ]);
 
-  const posts: Post[] = postsResponse.data;
+  const posts: Post[] = postsResponse.data || [];
 
   return (
-    <main className="min-h-screen px-6 py-20 transition-colors">
+<main className="min-h-screen px-6 py-20 transition-colors">
       <div className="mx-auto max-w-7xl">
         <header className="mb-16 flex flex-col items-center text-center space-y-8">
           <div className="flex flex-col items-center gap-4">
