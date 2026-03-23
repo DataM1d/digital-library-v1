@@ -25,6 +25,7 @@ type PostRepo interface {
 	GetUserLikedPosts(ctx context.Context, userID int) ([]models.Post, error)
 	UpdateBlurHash(ctx context.Context, id int, hash string) error
 	WithTransaction(ctx context.Context, fn func(PostRepo) error) error
+	GetAllImageURLs(ctx context.Context) ([]string, error)
 }
 
 type CategoryRepo interface {
@@ -32,7 +33,6 @@ type CategoryRepo interface {
 	GetAll(ctx context.Context) ([]models.Category, error)
 	Delete(ctx context.Context, id int) error
 }
-
 type CommentRepo interface {
 	Create(ctx context.Context, c *models.Comment) error
 	GetByPostID(ctx context.Context, postID int) ([]models.Comment, error)
@@ -57,6 +57,7 @@ type PostService interface {
 	ToggleLike(ctx context.Context, userID, postID int) (bool, error)
 	GetLikedPosts(ctx context.Context, userID int) ([]models.Post, error)
 	UpdateBlurHash(ctx context.Context, postID int, hash string) error
+	CleanupOrphanedFiles(ctx context.Context) (int, error)
 }
 
 type UserService interface {
