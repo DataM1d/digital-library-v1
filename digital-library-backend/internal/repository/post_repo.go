@@ -3,6 +3,7 @@ package repository
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
 	"fmt"
 
 	"github.com/DataM1d/digital-library/internal/domain"
@@ -142,28 +143,44 @@ func (r *PostRepository) GetAll(ctx context.Context, category string, search str
 
 func (r *PostRepository) GetBySlug(ctx context.Context, slug string, currentUserID int) (*models.Post, error) {
 	query := `
-    SELECT 
-        p.id, p.created_by, COALESCE(p.category_id, 0), COALESCE(p.last_modified_by, 0), 
-        p.title, p.content, p.image_url, p.blur_hash, p.alt_text, p.slug, p.status,
-        COALESCE(p.meta_description, ''), COALESCE(p.og_image, ''), 
-        p.created_at, p.updated_at, 
-        COALESCE(c.name, '') as category_name,
-        (SELECT COUNT(*) FROM post_likes WHERE post_id = p.id) as like_count,
-        EXISTS(SELECT 1 FROM post_likes WHERE post_id = p.id AND user_id = $2) as user_has_liked
-    FROM posts p
-    LEFT JOIN categories c ON p.category_id = c.id
-    WHERE p.slug = $1 AND p.deleted_at IS NULL`
+		SELECT 
+			p.id, p.created_by, COALESCE(p.category_id, 0), COALESCE(p.last_modified_by, 0),
+			p.title, p.content, COALESCE(p.image_url, ''), COALESCE(p.blur_hash, ''), 
+			COALESCE(p.alt_text, ''), p.slug, p.status, 
+			COALESCE(p.meta_description, ''), COALESCE(p.og_image, ''),
+			p.created_at, p.updated_at,
+			COALESCE(c.name, '') as category_name,
+			EXISTS(SELECT 1 FROM post_likes WHERE post_id = p.id AND user_id = $1) as user_has_liked,
+			COALESCE(json_agg(t.name) FILTER (WHERE t.name IS NOT NULL), '[]') as tags
+		FROM posts p
+		LEFT JOIN categories c ON p.category_id = c.id
+		LEFT JOIN post_tags pt ON p.id = pt.post_id
+		LEFT JOIN tags t ON pt.tag_id = t.id
+		WHERE p.slug = $2 AND p.deleted_at IS NULL
+		GROUP BY p.id, c.name`
 
 	var p models.Post
-	err := r.db.QueryRowContext(ctx, query, slug, currentUserID).Scan(
+	var tagsJSON []byte
+
+	err := r.db.QueryRowContext(ctx, query, currentUserID, slug).Scan(
 		&p.ID, &p.CreatedBy, &p.CategoryID, &p.LastModifiedBy,
-		&p.Title, &p.Content, &p.ImageURL, &p.BlurHash, &p.AltText, &p.Slug, &p.Status,
-		&p.MetaDescription, &p.OGImage, &p.CreatedAt, &p.UpdatedAt, &p.CategoryName,
-		&p.LikeCount, &p.UserHasLiked,
+		&p.Title, &p.Content, &p.ImageURL, &p.BlurHash,
+		&p.AltText, &p.Slug, &p.Status,
+		&p.MetaDescription, &p.OGImage,
+		&p.CreatedAt, &p.UpdatedAt, &p.CategoryName,
+		&p.UserHasLiked, &tagsJSON,
 	)
+
 	if err != nil {
 		return nil, err
 	}
+
+	if len(tagsJSON) > 0 {
+		if err := json.Unmarshal(tagsJSON, &p.Tags); err != nil {
+			return nil, fmt.Errorf("failed to unmarshal tags: %w", err)
+		}
+	}
+
 	return &p, nil
 }
 
@@ -215,7 +232,7 @@ func (r *PostRepository) GetUserLikedPosts(ctx context.Context, userID int) ([]m
 
 func (r *PostRepository) GetByID(ctx context.Context, id int) (*models.Post, error) {
 	var p models.Post
-	err := r.db.QueryRowContext(ctx, `SELECT id, image_url FROM posts WHERE id = $1`, id).Scan(&p.ID, &p.ImageURL)
+	err := r.db.QueryRowContext(ctx, `SELECT id, image_url, blur_hash FROM posts WHERE id = $1 AND deleted_at IS NULL`, id).Scan(&p.ID, &p.ImageURL, &p.BlurHash)
 	return &p, err
 }
 
@@ -223,4 +240,25 @@ func (r *PostRepository) UpdateBlurHash(ctx context.Context, id int, hash string
 	query := `UPDATE posts SET blur_hash = $1, updated_at = NOW() WHERE id = $2 AND deleted_at IS NULL`
 	_, err := r.db.ExecContext(ctx, query, hash, id)
 	return err
+}
+
+func (r *PostRepository) GetAllImageURLs(ctx context.Context) ([]string, error) {
+	query := `SELECT image_url FROM posts WHERE image_url IS NOT NULL AND image_url != '' AND deleted_at IS NULL`
+
+	rows, err := r.db.QueryContext(ctx, query)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var urls []string
+	for rows.Next() {
+		var url string
+		if err := rows.Scan(&url); err != nil {
+			return nil, err
+		}
+		urls = append(urls, url)
+	}
+
+	return urls, nil
 }
