@@ -1281,3 +1281,35 @@ Engineering Sprint: 2026-03-23
 
    SQL MOCKING:
    Learned to use `sqlmock` for database-free testing. Mastered using backticks in Go to handle regex escaping for SQL positional arguments `(\$1).`
+
+FRONTEND TanStack Query (v5) Next.js Async Integration: 2026-03-23
+1. The Sealed Envelope Pattern:
+   Discovery:
+   In Next.js 15, `searchParams` and `params` are now Promises.
+
+   Fix:
+   You can not access `.search` directly in Server Components anymore.
+   YYou must `await` the props before extracting values. This prevents hydration mismatches and performance bottlenecks.
+
+2. Declarative Data Fetching vs Manual Effects:
+   Shift: 
+   Replaced `UseEffect` `useState` `fetch` with `useQuery`.
+
+   Advantage:
+   Stale While Revalidate, The UI keeps placeholder data visible while the Go backend refreshes in the background, eliminating white flashes and constant loading spinners.
+
+3. Zod as a System Firewall:
+   Insight:
+   Used `z.array(CategorySchema).parse()` not just for type safety but as a Data Integrity Check.
+
+   Lesson:
+   When the Go backend changed its JSON output shape Direct array vs Wrapped Object Zod caught the drift immediately, preventing the undefined errors from crashing the UI components.
+
+4. Unified Provider Architecture:
+   Structure:
+   Consolidated `QueryClient`, `ThemeProvider`, and `AuthProvider` into a single wrapper.
+
+   Techincal Win:
+   This hirearchy ensures that the Auth state can leverage the Query cache, and the entire app stays hydrated with the correct CSS variables and API state simultaneously.
+
+   
