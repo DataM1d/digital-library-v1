@@ -1238,3 +1238,46 @@ Engineering Sprint: Test Driven Refactor 2026-03-20
 
    Win:
    Created a centralized `Makefile` to turn 80 character commands into 10 character aliases `(make test-v)`. This ensures the "Green Screen" of passing tests is only one command away.
+
+Engineering Sprint: 2026-03-23
+1. Architecture & Testing:
+   Interface Satisfaction: 
+   Learned that Go is non negotiable regarding method signatures. Even a missing pointer `(*)` or a renamed struct in a return type breaks the interface.
+
+   Decoupling:
+   Successfully isolated the Transport Layer (Gin) from the Service Layer using mocks.
+
+   Mocking Multipart Forms:
+   Developed a strategy to simmulate file uploads in test using `multipart.Writer` and manual binary headers to satisfy `http.DetectContentType`.
+
+2. Database & Repository Patterns
+   Scan Count Ruke:
+   Verified that `rows.Scan` must match the `SELECT` column order and count exactly. Missing a column or variable results in a runtime error.
+
+   Postgres JSON Aggregation:
+   Learned to use `josn_agg` to fetch tags in a single query.
+      Win: 
+      Scanning the result into a temporary `[]byte`, then using `json.Unmarshal` to populate a Go slice. This solves the pointer mismatch when moving data from SQL to Go structs.
+   
+   Sync Logic:
+   Implemented a `SyncPostTags` method using a Delete then insert pattern to keep artifact metadata clean.
+
+3. Concurrency & Lifecycle:
+   Background Tasks:
+   Discovered the background goroutines (like `BlurHash` generation) must use a fresh `context.Background()`.
+      Why:
+      The `c.Request.Context()` is canceled the moment the HTTP response is sent, which would kill any background work still in progress.
+
+4. Type Safety & logic:
+   Pagination Math: 
+   Standardized on `int` for the domain model. Used explicit type casting `(int(total))` to bridge the gap between Postgres's `int64` and the Api's requirements.
+
+   Ceilling Division Formula:
+   Refined the logic for `TotalPages: (total + limit - 1) / limit`.
+
+5. Developer Experience:
+   Automation: 
+   Created a `Makefile`to turn long, error-prone test commands into simple aliases like `make test-v.`
+
+   SQL MOCKING:
+   Learned to use `sqlmock` for database-free testing. Mastered using backticks in Go to handle regex escaping for SQL positional arguments `(\$1).`
