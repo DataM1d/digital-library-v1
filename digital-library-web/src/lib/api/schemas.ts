@@ -36,6 +36,17 @@ export const PostSchema = z.object({
   og_image: z.string().optional(),
 });
 
+export const PostFormSchema = z.object({
+  title: z.string().min(5, "Title must be at least 5 characters"),
+  content: z.string().min(20, "Content must be more descriptive (20+ chars)"),
+  category_id: z.string().min(1, "Taxonomy classification is required"),
+  status: z.enum(["published", "draft"]),
+  tags: z.array(z.string()), 
+  alt_text: z.string().optional(),
+});
+
+export type PostFormData = z.infer<typeof PostFormSchema>;
+
 export const PaginatedPostSchema = z.object({
   data: z.array(PostSchema).nullable().transform((val) => val ?? []),
   meta: z.object({
@@ -50,3 +61,4 @@ export const AuthResponseSchema = z.object ({
     token: z.string(),
     user: UserSchema,
 });
+
