@@ -1,31 +1,40 @@
+import axios from "axios";
 import { z } from "zod";
 
 const BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080';
 
-export async function request<T>(
-    endpoint: string, 
-    options: RequestInit = {}, 
-    schema?: z.ZodSchema<T>
-): Promise<T> {
-    const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
-    const headers = new Headers(options.headers);
+export const apiInstance = axios.create({
+  baseURL: BASE_URL,
+});
 
+apiInstance.interceptors.request.use((config) => {
+  if (typeof window !== "undefined") {
+    const token = localStorage.getItem("token");
     if (token) {
-        headers.set("Authorization", `Bearer ${token}`);
+      config.headers.Authorization = `Bearer ${token}`;
     }
+  }
+  return config;
+});
 
-    if (!(options.body instanceof FormData)) {
-        headers.set("Content-Type", "application/json");
+apiInstance.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (error.response?.status === 401) {
+      if (typeof window !== "undefined") {
+        localStorage.removeItem("token");
+        localStorage.removeItem("user");
+        window.location.href = "/login?redirect=" + window.location.pathname;
+      }
     }
+    return Promise.reject(error);
+  }
+);
 
-    const response = await fetch(`${BASE_URL}/api${endpoint}`, { ...options, headers });
-
-    if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.error || "Something went wrong");
-    }
-
-    if (response.status === 204) return {} as T; 
-    const data = await response.json();
-    return schema ? schema.parse(data) : data;
+export async function request<T>(
+  config: import("axios").AxiosRequestConfig,
+  schema?: z.ZodSchema<T>
+): Promise<T> {
+  const response = await apiInstance(config);
+  return schema ? schema.parse(response.data) : response.data;
 }
