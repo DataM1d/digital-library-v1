@@ -10,6 +10,9 @@ export const api = {
   comments: commentApi
 }
 
+export const getPosts = postsApi.list;
+export const getCategories = postsApi.categories;
+
 export * from "./api/posts";
 export * from "./api/auth";
 export * from "./api/admin";
