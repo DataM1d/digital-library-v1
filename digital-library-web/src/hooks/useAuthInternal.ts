@@ -15,42 +15,44 @@ export function useAuthInternal() {
 
  useEffect(() => {
     const initAuth = () => {
-      const token = localStorage.getItem("token");
-      const savedUser = localStorage.getItem("user");
+      try {
+        const token = localStorage.getItem("token");
+        const savedUser = localStorage.getItem("user");
 
-      if (token && savedUser) {
-        try {
+        if (token && savedUser) {
           const parsedUser = JSON.parse(savedUser);
-          const validateUser = UserSchema.parse(parsedUser);
-          setUser(validateUser);
-        } catch (error) {
-          console.error("Archive authentication corrupted:", error);
-          localStorage.clear();
+          const validatedUser = UserSchema.parse(parsedUser);
+          setUser(validatedUser);
         }
+      } catch (error) {
+        console.error("Archive authentication corrupted:", error);
+        localStorage.removeItem("token");
+        localStorage.removeItem("user");
+      } finally {
+        setLoading(false);
+        setMounted(true);
       }
-      setLoading(false);
-      setMounted(true);
     };
     initAuth();
   }, []);
 
   const handleAuthSuccess = useCallback((res: AuthResponse) => {
     localStorage.setItem("token", res.token);
-    if (res.user) {
-      localStorage.setItem("user", JSON.stringify(res.user));
-      setUser(res.user);
-      toast.success(`Welcome back, ${res.user.username}`);
-    }
+    localStorage.setItem("user", JSON.stringify(res.user));
+
+    setUser(res.user);
+    toast.success(`Access granted: Welcome, ${res.user.username}`);
     
     const params = new URLSearchParams(window.location.search);
-    const redirectTo = params.get("redirect") || "/admin";
+    const redirectTo = params.get("redirect") || "/admin/posts";
     router.push(redirectTo);
+    router.refresh();
   }, [router]);
 
   const login = async (credentials: LoginCredentials) => {
     try {
       const res = await api.auth.login(credentials);
-      handleAuthSuccess(res);
+      await handleAuthSuccess(res);
     } catch (err) {
       if (isAxiosError(err)) {
         toast.error(err.response?.data?.error || "Invalid credentials");
@@ -62,7 +64,7 @@ export function useAuthInternal() {
   const register = async (payload: RegisterPayload) => {
     try {
       const res = await api.auth.register(payload);
-      handleAuthSuccess(res);
+      await handleAuthSuccess(res);
     } catch (err) {
       if (isAxiosError(err)) {
         toast.error(err.response?.data?.error || "Registration failed");
@@ -75,6 +77,7 @@ export function useAuthInternal() {
     localStorage.removeItem("token");
     localStorage.removeItem("user");
     setUser(null);
+    
     toast.info("Session archived. You have been logged out.");
     router.push("/login");
     router.refresh();
