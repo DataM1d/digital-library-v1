@@ -31,20 +31,17 @@ func main() {
 	}
 	defer db.Close()
 
-	//REPOSITORIES
 	userRepo := repository.NewUserRepository(db)
 	postRepo := repository.NewPostRepository(db)
 	catRepo := repository.NewCategoryRepository(db)
 	commentRepo := repository.NewCommentRepository(db)
 	tagRepo := repository.NewTagRepository(db)
 
-	//SERVICES
 	userService := service.NewUserService(userRepo)
 	postService := service.NewPostService(postRepo, tagRepo)
 	catService := service.NewCategoryService(catRepo)
 	commentService := service.NewCommentService(commentRepo, postRepo)
 
-	//HANDLERS
 	authHandler := handlers.NewAuthHandler(userService)
 	postHandler := handlers.NewPostHandler(postService)
 	catHandler := handlers.NewCategoryHandler(catService)
@@ -52,21 +49,26 @@ func main() {
 
 	r := gin.New()
 
-	//GLobal Middleware
+	r.RedirectTrailingSlash = true
+	r.RedirectFixedPath = true
+	r.HandleMethodNotAllowed = true
+
 	r.Use(gin.Recovery())
 	r.Use(middleware.LoggerMiddleware())
 	r.Use(middleware.CORSMiddleware())
 	r.Use(middleware.SecurityMiddleware())
 	r.Use(middleware.RateLimitMiddleware())
 
-	//CONFIGURATION
 	r.MaxMultipartMemory = 8 << 20
 	if _, err := os.Stat("./uploads"); os.IsNotExist(err) {
 		os.MkdirAll("./uploads", 0755)
 	}
 	r.Static("/uploads", "./uploads")
 
-	//ROUTES
+	r.GET("/ping", func(c *gin.Context) {
+		c.String(200, "pong")
+	})
+
 	api := r.Group("/api")
 	{
 		auth := api.Group("/auth")
@@ -75,25 +77,22 @@ func main() {
 			auth.POST("/login", authHandler.Login)
 		}
 
-		//PUBLIC ARTIFACTS
 		posts := api.Group("/posts")
 		{
-			posts.GET("/", postHandler.GetPosts)
+			posts.GET("", postHandler.GetPosts)
 			posts.GET("/s/:slug", postHandler.GetBySlug)
 			posts.GET("/categories", catHandler.GetCategories)
-			posts.GET("/s/:slug/comments", commentHandler.GetByPost)
+			posts.GET("/id/:id/comments", commentHandler.GetByPost)
 		}
 
-		//AAUTHENTICATED USER ACTIONS
 		user := api.Group("/user")
 		user.Use(middleware.AuthMiddleware())
 		{
 			user.POST("/posts/like/:id", postHandler.ToggleLike)
 			user.GET("/liked", postHandler.GetMyLikedPosts)
-			user.POST("/posts/s/:slug/comments", commentHandler.Create)
+			user.POST("/posts/id/:id/comments", commentHandler.Create)
 		}
 
-		//ADMINISTRATIVE CONTROL
 		admin := api.Group("/admin")
 		admin.Use(middleware.AuthMiddleware(), middleware.AdminOnly())
 		{
@@ -105,7 +104,6 @@ func main() {
 		}
 	}
 
-	//SERVER START
 	port := os.Getenv("PORT")
 	if port == "" {
 		port = "8080"
