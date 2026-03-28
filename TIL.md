@@ -1308,3 +1308,47 @@ FRONTEND TanStack Query (v5) Next.js Async Integration: 2026-03-23
    Techincal Win:
    This hirearchy ensures that the Auth state can leverage the Query cache, and the entire app stays hydrated with the correct CSS variables and API state simultaneously.
 
+
+BACKEND: 2026-03-28
+
+1. HTTP Method Strictness in Gin:
+   Concept: Gin’s router is explicit by default.
+
+   The Lesson: A GET route does not automatically handle HEAD requests. Tools like curl -I send HEAD requests to check headers, which will return a 404 unless HandleMethodNotAllowed is enabled or a specific HEAD handler is defined.
+
+   The Fix: Use r.HandleMethodNotAllowed = true to allow the router to find matching paths even if the method differs, or always test with curl -X GET.
+
+2. URL Parameter Mismatches (Slug vs. ID):
+   Concept: The Hidden 404.
+
+   The Lesson: If your route defines :slug but your handler calls c.Param("id"), Gin returns an empty string for "id". If you then pass that empty string to strconv.Atoi(), the handler fails or returns a 400/404.
+
+   The Fix: Always ensure the key in api.Group("/:key") matches the key in c.Param("key").
+
+3. JWT Stale Claims:
+   Concept: Tokens are snapshots not live links.
+
+   The Lesson: RBAC (Role-Based Access Control) data stored inside a JWT (like role: "user") is immutable until the token expires.
+
+   The Fix: Even if you update the database (UPDATE users SET role = 'admin'), the user must re-log in to generate a new token that reflects their elevated privileges.
+
+4. Nested Resource Routing Patterns
+   Concept: RESTful clarity.
+
+   The Lesson: Using Slugs is great for SEO-friendly public pages (e.g., /posts/s/the-vasa), but using IDs is safer for relational actions (e.g., /posts/id/2/comments).
+
+   The Fix: Mix patterns intentionally. Use Slugs for fetching and IDs for mutating (POST/PATCH/DELETE) to avoid complex string-to-ID lookups in every handler.
+
+5. Next.js Server-Side Networking
+   Concept: The 127.0.0.1 vs localhost trap.
+
+   The Lesson: In Next.js Server Components (Node.js environment), localhost can sometimes resolve to IPv6 (::1), while your Go server is listening on IPv4 (127.0.0.1). This causes a "silent hang" or connection refused.
+
+   The Fix: Hardcode 127.0.0.1 in your .env.local to skip the DNS resolution headache during development.
+
+6. JSON Data Wrapping
+   Concept: Consistency in API Responses.
+
+   The Lesson: Your Go API returns a "Result Object" {"data": [], "meta": {}} rather than a "Plain Array" [].
+
+   The Fix: Frontend logic must access response.data.data or equivalent. Forgetting the wrapper is the #1 cause of .map() is not a function errors in React.
