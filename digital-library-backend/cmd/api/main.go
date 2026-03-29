@@ -88,7 +88,7 @@ func main() {
 		user := api.Group("/user")
 		user.Use(middleware.AuthMiddleware())
 		{
-			user.POST("/posts/like/:id", postHandler.ToggleLike)
+			user.POST("/posts/id/:id/like", postHandler.ToggleLike)
 			user.GET("/liked", postHandler.GetMyLikedPosts)
 			user.POST("/posts/id/:id/comments", commentHandler.Create)
 		}
