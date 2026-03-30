@@ -42,9 +42,9 @@ func getLimiter(ip string) *rate.Limiter {
 
 	v, exists := clients[ip]
 	if !exists {
-		limiter := rate.NewLimiter(rate.Every(time.Second), 5)
-		clients[ip] = &client{limiter: limiter, lastSeen: time.Now()}
-		return limiter
+		limiter := rate.NewLimiter(rate.Limit(5), 10)
+		v = &client{limiter: limiter}
+		clients[ip] = v
 	}
 
 	v.lastSeen = time.Now()
@@ -54,10 +54,16 @@ func getLimiter(ip string) *rate.Limiter {
 func RateLimitMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		ip := c.ClientIP()
+
+		if ip == "127.0.0.1" || ip == "::1" {
+			c.Next()
+			return
+		}
+
 		limiter := getLimiter(ip)
 		if !limiter.Allow() {
 			c.JSON(http.StatusTooManyRequests, gin.H{
-				"error": "Rate limit exceeded. Please wait before trying again.",
+				"error": "Archive synchronization limit reached. Please wait.",
 			})
 			c.Abort()
 			return

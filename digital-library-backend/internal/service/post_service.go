@@ -4,12 +4,18 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"image"
+	_ "image/jpeg"
+	_ "image/png"
+	"log"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/DataM1d/digital-library/internal/domain"
 	"github.com/DataM1d/digital-library/internal/models"
 	"github.com/DataM1d/digital-library/pkg/utils"
+	"github.com/buckket/go-blurhash"
 	"github.com/microcosm-cc/bluemonday"
 )
 
@@ -39,6 +45,16 @@ func (s *postService) CreateLibraryEntry(ctx context.Context, post *models.Post,
 
 	if post.Status == "" {
 		post.Status = "published"
+	}
+
+	if post.ImageURL != "" {
+		cleanPath := strings.TrimPrefix(post.ImageURL, "/")
+		fullPath := filepath.Join(".", cleanPath)
+		if hash, err := s.generateBlurHash(fullPath); err == nil {
+			post.BlurHash = hash
+		} else {
+			log.Printf("Archive Warning: BlurHash generation failed: %v", err)
+		}
 	}
 
 	baseSlug := utils.GenerateSlug(post.Title)
@@ -73,6 +89,14 @@ func (s *postService) UpdatePost(ctx context.Context, post *models.Post, tagName
 	post.Title = strict.Sanitize(post.Title)
 	post.Content = ugc.Sanitize(post.Content)
 	post.LastModifiedBy = userID
+
+	if post.ImageURL != "" {
+		cleanPath := strings.TrimPrefix(post.ImageURL, "/")
+		fullPath := filepath.Join(".", cleanPath)
+		if hash, err := s.generateBlurHash(fullPath); err == nil {
+			post.BlurHash = hash
+		}
+	}
 
 	return s.repo.WithTransaction(ctx, func(txRepo domain.PostRepo) error {
 		if err := txRepo.Update(ctx, post); err != nil {
@@ -137,6 +161,21 @@ func (s *postService) DeletePost(ctx context.Context, id int, userRole string) e
 
 func (s *postService) UpdateBlurHash(ctx context.Context, postID int, hash string) error {
 	return s.repo.UpdateBlurHash(ctx, postID, hash)
+}
+
+func (s *postService) generateBlurHash(imagePath string) (string, error) {
+	file, err := os.Open(imagePath)
+	if err != nil {
+		return "", err
+	}
+	defer file.Close()
+
+	img, _, err := image.Decode(file)
+	if err != nil {
+		return "", err
+	}
+
+	return blurhash.Encode(4, 3, img)
 }
 
 func (s *postService) generateUniqueSlug(ctx context.Context, baseSlug string) (string, error) {

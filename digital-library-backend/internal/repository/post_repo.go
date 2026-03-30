@@ -5,7 +5,6 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
-	"log"
 
 	"github.com/DataM1d/digital-library/internal/domain"
 	"github.com/DataM1d/digital-library/internal/models"
@@ -98,20 +97,41 @@ func (r *PostRepository) Delete(ctx context.Context, id int) error {
 }
 
 func (r *PostRepository) GetAll(ctx context.Context, category string, search string, tags []string, limit, offset int, statusFilter string, currentUserID int) ([]models.Post, int, error) {
-	baseConditions := `WHERE p.deleted_at IS NULL AND (p.title ILIKE $1 OR p.content ILIKE $1)`
-	args := []interface{}{"%" + search + "%"}
-	argCount := 2
+	var baseConditions string
+	var args []interface{}
+	argCount := 1
+
+	if len(search) > 0 && search[0] == '#' {
+		tagName := search[1:]
+		if tagName == "" {
+			baseConditions = `WHERE p.deleted_at IS NULL`
+		} else {
+			baseConditions = fmt.Sprintf(`WHERE p.deleted_at IS NULL AND EXISTS (
+    				SELECT 1 FROM post_tags pt 
+    				JOIN tags t ON pt.tag_id = t.id 
+    				WHERE pt.post_id = p.id AND t.name ILIKE $%d
+		)`, argCount)
+			args = append(args, tagName+"%")
+			argCount++
+		}
+	} else {
+		baseConditions = fmt.Sprintf(`WHERE p.deleted_at IS NULL AND (p.title ILIKE $%d OR p.content ILIKE $%d)`, argCount, argCount)
+		args = append(args, "%"+search+"%")
+		argCount++
+	}
 
 	if statusFilter != "" {
 		baseConditions += fmt.Sprintf(" AND p.status = $%d", argCount)
 		args = append(args, statusFilter)
 		argCount++
 	}
+
 	if category != "" {
 		baseConditions += fmt.Sprintf(" AND c.slug = $%d", argCount)
 		args = append(args, category)
 		argCount++
 	}
+
 	if len(tags) > 0 {
 		baseConditions += fmt.Sprintf(" AND EXISTS (SELECT 1 FROM post_tags pt JOIN tags t ON pt.tag_id = t.id WHERE pt.post_id = p.id AND t.name = ANY($%d))", argCount)
 		args = append(args, pq.Array(tags))
@@ -163,7 +183,6 @@ func (r *PostRepository) GetAll(ctx context.Context, category string, search str
 			&tagsJSON,
 		)
 		if err != nil {
-			log.Printf("ERROR [PostRepo.GetAll] Scan failed: %v", err)
 			return nil, 0, err
 		}
 		json.Unmarshal(tagsJSON, &p.Tags)
