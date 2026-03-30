@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
+	"log"
 
 	"github.com/DataM1d/digital-library/internal/domain"
 	"github.com/DataM1d/digital-library/internal/models"
@@ -42,9 +43,9 @@ func (r *PostRepository) WithTransaction(ctx context.Context, fn func(domain.Pos
 
 func (r *PostRepository) Create(ctx context.Context, p *models.Post) error {
 	query := `
-    INSERT INTO posts (title, content, image_url, blur_hash, alt_text, slug, status, category_id, meta_description, og_image, created_by, created_at, updated_at)
-    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, NOW(), NOW())
-    RETURNING id, created_at, updated_at`
+	INSERT INTO posts (title, content, image_url, blur_hash, alt_text, slug, status, category_id, meta_description, og_image, created_by, created_at, updated_at)
+	VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, NOW(), NOW())
+	RETURNING id, created_at, updated_at`
 
 	return r.db.QueryRowContext(ctx, query,
 		p.Title, p.Content, p.ImageURL, p.BlurHash, p.AltText,
@@ -52,13 +53,36 @@ func (r *PostRepository) Create(ctx context.Context, p *models.Post) error {
 	).Scan(&p.ID, &p.CreatedAt, &p.UpdatedAt)
 }
 
+func (r *PostRepository) SyncTags(ctx context.Context, postID int, tagNames []string) error {
+	_, err := r.db.ExecContext(ctx, "DELETE FROM post_tags WHERE post_id = $1", postID)
+	if err != nil {
+		return err
+	}
+
+	if len(tagNames) == 0 {
+		return nil
+	}
+	query := `
+		WITH inserted_tags AS (
+			INSERT INTO tags (name)
+			SELECT unnest($1::text[])
+			ON CONFLICT (name) DO UPDATE SET name = EXCLUDED.name
+			RETURNING id
+		)
+		INSERT INTO post_tags (post_id, tag_id)
+		SELECT $2, id FROM inserted_tags`
+
+	_, err = r.db.ExecContext(ctx, query, pq.Array(tagNames), postID)
+	return err
+}
+
 func (r *PostRepository) Update(ctx context.Context, p *models.Post) error {
 	query := `
-        UPDATE posts 
-        SET title = $1, content = $2, image_url = $3, blur_hash = $4, alt_text = $5, 
-            category_id = $6, status = $7, meta_description = $8, og_image = $9, 
-            last_modified_by = $10, updated_at = NOW(), slug = $11
-        WHERE id = $12 AND deleted_at IS NULL`
+		UPDATE posts 
+		SET title = $1, content = $2, image_url = $3, blur_hash = $4, alt_text = $5, 
+			category_id = $6, status = $7, meta_description = $8, og_image = $9, 
+			last_modified_by = $10, updated_at = NOW(), slug = $11
+		WHERE id = $12 AND deleted_at IS NULL`
 
 	_, err := r.db.ExecContext(ctx, query,
 		p.Title, p.Content, p.ImageURL, p.BlurHash, p.AltText,
@@ -74,51 +98,52 @@ func (r *PostRepository) Delete(ctx context.Context, id int) error {
 }
 
 func (r *PostRepository) GetAll(ctx context.Context, category string, search string, tags []string, limit, offset int, statusFilter string, currentUserID int) ([]models.Post, int, error) {
-	baseQuery := `
-        FROM posts p
-        LEFT JOIN categories c ON p.category_id = c.id
-        WHERE p.deleted_at IS NULL AND (p.title ILIKE $1 OR p.content ILIKE $1)`
-
+	baseConditions := `WHERE p.deleted_at IS NULL AND (p.title ILIKE $1 OR p.content ILIKE $1)`
 	args := []interface{}{"%" + search + "%"}
 	argCount := 2
 
 	if statusFilter != "" {
-		baseQuery += fmt.Sprintf(" AND p.status = $%d", argCount)
+		baseConditions += fmt.Sprintf(" AND p.status = $%d", argCount)
 		args = append(args, statusFilter)
 		argCount++
 	}
-
 	if category != "" {
-		baseQuery += fmt.Sprintf(" AND c.slug = $%d", argCount)
+		baseConditions += fmt.Sprintf(" AND c.slug = $%d", argCount)
 		args = append(args, category)
 		argCount++
 	}
-
 	if len(tags) > 0 {
-		baseQuery += fmt.Sprintf(" AND EXISTS (SELECT 1 FROM post_tags pt JOIN tags t ON pt.tag_id = t.id WHERE pt.post_id = p.id AND t.name = ANY($%d))", argCount)
+		baseConditions += fmt.Sprintf(" AND EXISTS (SELECT 1 FROM post_tags pt JOIN tags t ON pt.tag_id = t.id WHERE pt.post_id = p.id AND t.name = ANY($%d))", argCount)
 		args = append(args, pq.Array(tags))
 		argCount++
 	}
 
 	var total int
-	err := r.db.QueryRowContext(ctx, "SELECT COUNT(DISTINCT p.id) "+baseQuery, args...).Scan(&total)
-	if err != nil {
+	countQuery := `SELECT COUNT(DISTINCT p.id) FROM posts p LEFT JOIN categories c ON p.category_id = c.id ` + baseConditions
+	if err := r.db.QueryRowContext(ctx, countQuery, args...).Scan(&total); err != nil {
 		return nil, 0, err
 	}
+
+	userLikedIdx := argCount
+	args = append(args, currentUserID)
+	argCount++
 
 	finalQuery := fmt.Sprintf(`
     SELECT 
         p.id, p.created_by, COALESCE(p.category_id, 0), COALESCE(p.last_modified_by, 0), 
         p.title, p.content, COALESCE(p.image_url, ''), COALESCE(p.blur_hash, ''), 
         COALESCE(p.alt_text, ''), p.slug, p.status, p.created_at, p.updated_at, 
-        COALESCE(c.name, '') as category_name, 
+        COALESCE(c.name, '') as category_name,
+        COALESCE(p.meta_description, '') as meta_desc, COALESCE(p.og_image, '') as og_img,
         (SELECT COUNT(*) FROM post_likes WHERE post_id = p.id) as like_count,
-        EXISTS(SELECT 1 FROM post_likes WHERE post_id = p.id AND user_id = $%d) as user_has_liked `, argCount) +
-		baseQuery +
-		fmt.Sprintf(" ORDER BY p.created_at DESC LIMIT $%d OFFSET $%d", argCount+1, argCount+2)
+        EXISTS(SELECT 1 FROM post_likes WHERE post_id = p.id AND user_id = $%d) as user_has_liked,
+        COALESCE((SELECT json_agg(t.name) FROM post_tags pt JOIN tags t ON pt.tag_id = t.id WHERE pt.post_id = p.id), '[]'::json) as tags
+    FROM posts p
+    LEFT JOIN categories c ON p.category_id = c.id
+    %s
+    ORDER BY p.created_at DESC LIMIT $%d OFFSET $%d`, userLikedIdx, baseConditions, argCount, argCount+1)
 
-	args = append(args, currentUserID, limit, offset)
-
+	args = append(args, limit, offset)
 	rows, err := r.db.QueryContext(ctx, finalQuery, args...)
 	if err != nil {
 		return nil, 0, err
@@ -128,14 +153,20 @@ func (r *PostRepository) GetAll(ctx context.Context, category string, search str
 	var posts []models.Post
 	for rows.Next() {
 		var p models.Post
+		var tagsJSON []byte
 		err := rows.Scan(
 			&p.ID, &p.CreatedBy, &p.CategoryID, &p.LastModifiedBy,
 			&p.Title, &p.Content, &p.ImageURL, &p.BlurHash, &p.AltText, &p.Slug, &p.Status,
-			&p.CreatedAt, &p.UpdatedAt, &p.CategoryName, &p.LikeCount, &p.UserHasLiked,
+			&p.CreatedAt, &p.UpdatedAt, &p.CategoryName,
+			&p.MetaDescription, &p.OGImage,
+			&p.LikeCount, &p.UserHasLiked,
+			&tagsJSON,
 		)
 		if err != nil {
+			log.Printf("ERROR [PostRepo.GetAll] Scan failed: %v", err)
 			return nil, 0, err
 		}
+		json.Unmarshal(tagsJSON, &p.Tags)
 		posts = append(posts, p)
 	}
 	return posts, total, nil
@@ -143,21 +174,24 @@ func (r *PostRepository) GetAll(ctx context.Context, category string, search str
 
 func (r *PostRepository) GetBySlug(ctx context.Context, slug string, currentUserID int) (*models.Post, error) {
 	query := `
-		SELECT 
-			p.id, p.created_by, COALESCE(p.category_id, 0), COALESCE(p.last_modified_by, 0),
-			p.title, p.content, COALESCE(p.image_url, ''), COALESCE(p.blur_hash, ''), 
-			COALESCE(p.alt_text, ''), p.slug, p.status, 
-			COALESCE(p.meta_description, ''), COALESCE(p.og_image, ''),
-			p.created_at, p.updated_at,
-			COALESCE(c.name, '') as category_name,
-			EXISTS(SELECT 1 FROM post_likes WHERE post_id = p.id AND user_id = $1) as user_has_liked,
-			COALESCE(json_agg(t.name) FILTER (WHERE t.name IS NOT NULL), '[]') as tags
-		FROM posts p
-		LEFT JOIN categories c ON p.category_id = c.id
-		LEFT JOIN post_tags pt ON p.id = pt.post_id
-		LEFT JOIN tags t ON pt.tag_id = t.id
-		WHERE p.slug = $2 AND p.deleted_at IS NULL
-		GROUP BY p.id, c.name`
+        SELECT 
+            p.id, p.created_by, COALESCE(p.category_id, 0), COALESCE(p.last_modified_by, 0),
+            p.title, p.content, COALESCE(p.image_url, ''), COALESCE(p.blur_hash, ''), 
+            COALESCE(p.alt_text, ''), p.slug, p.status, 
+            COALESCE(p.meta_description, ''), COALESCE(p.og_image, ''),
+            p.created_at, p.updated_at,
+            COALESCE(c.name, '') as category_name,
+            EXISTS(SELECT 1 FROM post_likes WHERE post_id = p.id AND user_id = $1) as user_has_liked,
+            COALESCE(json_agg(t.name) FILTER (WHERE t.name IS NOT NULL), '[]') as tags
+        FROM posts p
+        LEFT JOIN categories c ON p.category_id = c.id
+        LEFT JOIN post_tags pt ON p.id = pt.post_id
+        LEFT JOIN tags t ON pt.tag_id = t.id
+        WHERE p.slug = $2 AND p.deleted_at IS NULL
+        GROUP BY 
+            p.id, c.name, p.created_by, p.category_id, p.last_modified_by,
+            p.title, p.content, p.image_url, p.blur_hash, p.alt_text,
+            p.slug, p.status, p.meta_description, p.og_image, p.created_at, p.updated_at`
 
 	var p models.Post
 	var tagsJSON []byte
