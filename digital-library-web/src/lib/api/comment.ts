@@ -2,12 +2,18 @@ import { request } from "./client";
 import { PostComment } from "@/types";
 
 export const commentApi = {
-  getByPost: (slug: string) => 
-    request<PostComment[]>(`/posts/s/${slug}/comments`),
+  getByPost: (postId: number) => 
+    request<PostComment[]>({ 
+      url: `posts/id/${postId}/comments` 
+    }),
     
-  create: (slug: string, content: string, parentId?: number) => 
-    request<PostComment>(`/posts/s/${slug}/comments`, {
+  create: (postId: number, content: string, parentId?: number | null) => 
+    request<PostComment>({
       method: "POST",
-      body: JSON.stringify({ content, parent_id: parentId })
+      url: `user/posts/id/${postId}/comments`,
+      data: { 
+        content,
+        parent_id: parentId ?? null
+      }
     }),
 };

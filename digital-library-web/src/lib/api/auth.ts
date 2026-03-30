@@ -4,7 +4,16 @@ import { LoginCredentials, RegisterPayload, AuthResponse } from "@/types";
 
 export const authApi = {
   login: (credentials: LoginCredentials) => 
-    request<AuthResponse>("/auth/login", { method: "POST", body: JSON.stringify(credentials) }, AuthResponseSchema),
+    request<AuthResponse>({
+      url: "/auth/login",
+      method: "POST",
+      data: credentials,
+      }, AuthResponseSchema),
+
   register: (payload: RegisterPayload) => 
-    request<AuthResponse>("/auth/register", { method: "POST", body: JSON.stringify(payload) }, AuthResponseSchema),
+    request<AuthResponse>({
+      url: "/auth/register",
+      method: "POST",
+      data: payload,
+    }, AuthResponseSchema),
 };
