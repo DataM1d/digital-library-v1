@@ -1,10 +1,11 @@
-"use client"
+"use client";
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { api } from "@/lib/api";
 import { Post } from "@/types";
+import { isAxiosError } from "axios";
 
 export function usePostEditor(initialPost: Post, isEditing: boolean) {
   const router = useRouter();
@@ -23,15 +24,17 @@ export function usePostEditor(initialPost: Post, isEditing: boolean) {
   const savePost = async () => {
     setIsSaving(true);
 
-  try {
-    const data = new FormData();
+    try {
+      const data = new FormData();
       data.append("title", formData.title);
       data.append("content", formData.content);
       data.append("category_id", formData.category_id);
       data.append("status", formData.status);
       data.append("alt_text", formData.alt_text);
 
-    tags.forEach((tag) => data.append("tags", tag));
+    if (tags.length > 0) {
+      tags.forEach((tag) => data.append("tags", tag));
+    }
 
     if (imageFile) {
       data.append("image", imageFile);
@@ -46,16 +49,17 @@ export function usePostEditor(initialPost: Post, isEditing: boolean) {
       }
 
     router.push("/admin/posts");
-      router.refresh();
-    } catch (error: unknown) {
+    router.refresh();
+    } catch (err: unknown) {
       let errorMessage = "System rejection: Check backend logs";
       
-      if (error instanceof Error) {
-        errorMessage = error.message;
-      } else if (typeof error === "string") {
-        errorMessage = error;
+      if (isAxiosError(err)) {
+        errorMessage = err.response?.data?.error || err.message;
+      } else if (err instanceof Error) {
+        errorMessage = err.message;
       }
       
+      console.error("[Post Save Error]:", err);
       toast.error(errorMessage);
     } finally {
       setIsSaving(false);

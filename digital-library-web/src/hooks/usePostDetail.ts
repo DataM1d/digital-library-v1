@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { api } from "@/lib/api";
 import { Post } from "@/types";
 import { toast } from "sonner";
+import { isAxiosError } from "axios";
 
 export function usePostDetail(slug: string) {
   const [post, setPost] = useState<Post | null>(null);
@@ -11,23 +12,41 @@ export function usePostDetail(slug: string) {
   const [isLiked, setIsLiked] = useState(false);
 
   useEffect(() => {
+    let isMounted = true;
+
     async function fetchPost() {
+      if (!slug) return;
+
       try {
+        setLoading(true);
         const data = await api.posts.slug(slug);
-        setPost(data);
-        setLikesCount(data.like_count);
-      } catch (err) {
-        setError("Archive not found or server error.");
-        console.error(err);
+        
+        if (isMounted) {
+          setPost(data);
+          setLikesCount(data.like_count);
+          setIsLiked(!!data.user_has_liked);
+          setError(null);
+        }
+      } catch (err: unknown) {
+        if (isMounted) {
+          const msg = isAxiosError(err) 
+            ? err.response?.data?.error || "Archive not found" 
+            : "System failure";
+          setError(msg);
+          console.error("[Post Detail Fetch Error]:", err);
+        }
       } finally {
-        setLoading(false);
+        if (isMounted) {
+          setLoading(false);
+        }
       }
     }
     fetchPost();
+    return () => { isMounted = false; };
   }, [slug]);
 
   const toggleLike = async () => {
-    if (!post) return;
+    if (!post || !post.id) return;
 
     const prevCount = likesCount;
     const prevStatus = isLiked;
@@ -37,11 +56,15 @@ export function usePostDetail(slug: string) {
 
     try {
       await api.posts.like(post.id);
-    } catch (err) {
+    } catch (err: unknown) {
         setLikesCount(prevCount);
         setIsLiked(prevStatus);
-        toast.error("Feedback synchronization failed");
-        console.error(err);
+        let errorMsg = "Feedback synchronization failed";
+          if (isAxiosError(err) && err.response?.status === 401) {
+            errorMsg = "Authentication required to like artifacts";
+          }
+        toast.error(errorMsg);
+        console.error("[Like Error]:", err);
     }
   };
 

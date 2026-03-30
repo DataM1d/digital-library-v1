@@ -4,18 +4,19 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import { toast } from "sonner";
 import { isAxiosError } from "axios";
-import { useState } from "react";
+import { useSearchParams } from "next/navigation";
 
 interface UsePostsOptions {
   initialLimit?: number;
-  initialSearch?: string;
 }
 
 export function usePosts(options: UsePostsOptions = {}) {
-  const { initialLimit = 12, initialSearch = "" } = options;
+  const { initialLimit = 12 } = options;
   const queryClient = useQueryClient();
-  const [searchQuery, setSearchQuery] = useState(initialSearch);
-  const [page, setPage] = useState(1);
+  const searchParams = useSearchParams();
+  
+  const searchQuery = searchParams.get("search") || "";
+  const page = Number(searchParams.get("page")) || 1;
 
   const { data, isLoading, isPlaceholderData, refetch } = useQuery({
     queryKey: ["posts", { searchQuery, page, initialLimit }],
@@ -39,20 +40,13 @@ export function usePosts(options: UsePostsOptions = {}) {
     },
   });
 
-  const handleSearch = (val: string) => {
-    setSearchQuery(val);
-    setPage(1);
-  };
-
   return {
     posts: data?.data ?? [],
     meta: data?.meta ?? null,
     isLoading,
     isFetchingNext: isPlaceholderData,
     searchQuery,
-    setSearchQuery: handleSearch,
     page,
-    setPage,
     deletePost: deleteMutation.mutate,
     refresh: refetch,
   };

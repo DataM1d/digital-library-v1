@@ -21,13 +21,19 @@ export function useAuthInternal() {
 
         if (token && savedUser) {
           const parsedUser = JSON.parse(savedUser);
-          const validatedUser = UserSchema.parse(parsedUser);
-          setUser(validatedUser);
+          const result = UserSchema.safeParse(parsedUser);
+
+          if (result.success) {
+            setUser(result.data);
+          } else {
+            console.warn("Archive authentication schema mismatch. Resetting session.");
+            localStorage.removeItem("token");
+            localStorage.removeItem("user");
+          }
         }
       } catch (error) {
         console.error("Archive authentication corrupted:", error);
-        localStorage.removeItem("token");
-        localStorage.removeItem("user");
+        localStorage.clear();
       } finally {
         setLoading(false);
         setMounted(true);
@@ -45,8 +51,8 @@ export function useAuthInternal() {
     
     const params = new URLSearchParams(window.location.search);
     const redirectTo = params.get("redirect") || "/admin/posts";
+
     router.push(redirectTo);
-    router.refresh();
   }, [router]);
 
   const login = async (credentials: LoginCredentials) => {
@@ -77,7 +83,7 @@ export function useAuthInternal() {
     localStorage.removeItem("token");
     localStorage.removeItem("user");
     setUser(null);
-    
+
     toast.info("Session archived. You have been logged out.");
     router.push("/login");
     router.refresh();
