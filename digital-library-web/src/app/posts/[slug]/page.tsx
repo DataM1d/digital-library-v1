@@ -2,8 +2,10 @@
 
 import { use } from "react";
 import { usePostDetail } from "@/hooks/usePostDetail";
+import { useBlurLoad } from "@/hooks/useBlurLoad";
 import { CategoryPill } from "@/components/discovery/CategoryPill";
 import { CommentSection } from "@/components/social/CommentSection";
+import { Blurhash } from "react-blurhash";
 import Image from "next/image";
 import Link from "next/link";
 import { ArrowLeft, Heart, Calendar, User, Loader2, Share2 } from "lucide-react";
@@ -11,6 +13,7 @@ import { ArrowLeft, Heart, Calendar, User, Loader2, Share2 } from "lucide-react"
 export default function PostDetailPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = use(params);
   const { post, loading, error, likesCount, isLiked, toggleLike } = usePostDetail(slug);
+  const { isLoaded, handleLoad, imageClassName } = useBlurLoad();
 
   const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
 
@@ -45,9 +48,9 @@ export default function PostDetailPage({ params }: { params: Promise<{ slug: str
 
   return (
     <main className="min-h-screen bg-white dark:bg-zinc-950 pb-32 transition-colors">
-      <nav className="mx-auto max-w-5xl px-6 py-10">
+      <nav className="mx-auto max-w-5xl px-6 py-10" >
         <Link 
-          href="/" 
+          href="/"
           className="group inline-flex items-center gap-3 text-[10px] font-black uppercase tracking-[0.2em] text-zinc-400 hover:text-zinc-900 dark:hover:text-white transition-all"
         >
           <ArrowLeft size={14} className="transition-transform group-hover:-translate-x-1" />
@@ -102,11 +105,24 @@ export default function PostDetailPage({ params }: { params: Promise<{ slug: str
         </header>
 
         <div className="relative aspect-video w-full overflow-hidden rounded-[2.5rem] bg-zinc-100 dark:bg-zinc-900 mb-20 shadow-2xl shadow-zinc-200/50 dark:shadow-none">
+          {post.blur_hash && !isLoaded && (
+            <div className="absolute inset-0 z-10 transition-opacity duration-500">
+              <Blurhash
+                hash={post.blur_hash}
+                width="100%"
+                height="100%"
+                resolutionX={32}
+                resolutionY={32}
+                punch={1}
+              />
+            </div>
+          )}
           <Image
             src={imageUrl}
             alt={post.title}
             fill
-            className="object-cover transition-transform duration-1000 hover:scale-105"
+            onLoad={handleLoad}
+            className={`object-cover transition-transform duration-1000 hover:scale-105 ${imageClassName}`}
             priority
           />
         </div>
