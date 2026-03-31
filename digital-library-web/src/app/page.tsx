@@ -3,13 +3,31 @@ import { PostCard } from "@/components/posts/PostCard";
 import { SearchBar } from "@/components/discovery/SearchBar";
 import { CategoryFilter } from "@/components/archive/CategoryFilter";
 import { getPosts, getCategories } from "@/lib/api";
-import { Post } from "@/types";
+import { Post, Category } from "@/types";
+
 interface HomePageProps {
   searchParams: Promise<{
     search?: string;
     category?: string;
     page?: string;
   }>;
+}
+
+interface PostsResponse {
+  data: Post[];
+  meta: {
+    current_page: number;
+    limit: number;
+    total_items: number;
+    total_pages: number;
+  };
+}
+
+async function fetchWithTimeout<T>(promise: Promise<T>, timeoutMs: number = 8000): Promise<T> {
+  const timeout = new Promise<never>((_, reject) =>
+    setTimeout(() => reject(new Error("Timeout")), timeoutMs)
+  );
+  return Promise.race([promise, timeout]);
 }
 
 export default async function HomePage({ searchParams }: HomePageProps) {
@@ -19,15 +37,39 @@ export default async function HomePage({ searchParams }: HomePageProps) {
   const category = resolvedParams.category || "";
   const page = Number(resolvedParams.page) || 1;
 
-  const [postsResponse, categories] = await Promise.all([
-    getPosts({ search: query, category, page }),
-    getCategories().catch(() => [])
-  ]);
+  let posts: Post[] = [];
+  let categories: Category[] = [];
+  let hasError = false;
 
-  const posts: Post[] = postsResponse.data || [];
+  try {
+    const [postsData, categoriesData] = await Promise.all([
+      fetchWithTimeout<PostsResponse>(getPosts({ search: query, category, page })),
+      fetchWithTimeout<Category[]>(getCategories()).catch(() => [])
+    ]);
+
+    posts = postsData?.data ?? [];
+    categories = categoriesData ?? [];
+  } catch (error) {
+    hasError = true;
+  }
+
+  if (hasError) {
+    return (
+      <main className="flex min-h-screen items-center justify-center bg-white dark:bg-zinc-950">
+        <div className="text-center space-y-4">
+          <h2 className="text-sm font-black uppercase tracking-[0.4em] text-zinc-900 dark:text-white">
+            Connection Timeout
+          </h2>
+          <p className="text-[10px] text-zinc-400 uppercase tracking-widest">
+            Ensure backend is active at 127.0.0.1:8080
+          </p>
+        </div>
+      </main>
+    );
+  }
 
   return (
-<main className="min-h-screen px-6 py-20 transition-colors">
+    <main className="min-h-screen px-6 py-20 transition-colors bg-white dark:bg-zinc-950">
       <div className="mx-auto max-w-7xl">
         <header className="mb-16 flex flex-col items-center text-center space-y-8">
           <div className="flex flex-col items-center gap-4">
@@ -46,23 +88,22 @@ export default async function HomePage({ searchParams }: HomePageProps) {
           
           <div className="w-full max-w-2xl space-y-6">
             <SearchBar defaultValue={query} />
-            <CategoryFilter categories={categories} />
+            <CategoryFilter categories={categories} activeCategory={category} />
           </div>
         </header>
 
         <section className="grid grid-cols-1 gap-x-8 gap-y-16 sm:grid-cols-2 lg:grid-cols-3">
           {posts.length > 0 ? (
-            posts.map((post: Post, index: number) => (
+            posts.map((post: Post) => (
               <PostCard 
                 key={post.id} 
                 post={post} 
-                priority={index < 3} 
               />
             ))
           ) : (
             <div className="col-span-full py-40 text-center border-2 border-dashed border-zinc-100 dark:border-zinc-900 rounded-[3rem]">
               <p className="text-xs font-black uppercase tracking-[0.3em] text-zinc-400">
-                {query ? `No results for "${query}"` : "The archive is currently empty"}
+                {query ? `No records matching "${query}"` : "The archive is currently empty"}
               </p>
             </div>
           )}
