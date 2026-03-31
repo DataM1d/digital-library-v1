@@ -3,10 +3,16 @@ import { z } from "zod";
 export const UserSchema = z.object({
   id: z.number(),
   username: z.string().min(1),
-  email: z.string().email(),
-  role: z.enum(["user", "admin"]).default("user"),
-  created_at: z.string().optional(),
-  updated_at: z.string().optional(),
+  email: z.preprocess(
+    (val) => (typeof val === "string" ? val.toLowerCase().trim() : val),
+    z.string().email().catch("no-email@archive.com")
+  ),
+  role: z.preprocess(
+    (val) => (typeof val === "string" ? val.toLowerCase() : val),
+    z.enum(["user", "admin"]).catch("user")
+  ),
+  created_at: z.string().nullable().optional(),
+  updated_at: z.string().nullable().optional(),
 });
 
 export const CategorySchema = z.object({
