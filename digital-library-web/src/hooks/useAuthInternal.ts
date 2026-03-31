@@ -50,9 +50,10 @@ export function useAuthInternal() {
     toast.success(`Access granted: Welcome, ${res.user.username}`);
     
     const params = new URLSearchParams(window.location.search);
-    const redirectTo = params.get("redirect") || "/admin/posts";
+    const redirectTo = params.get("redirect") || "/";
 
     router.push(redirectTo);
+    router.refresh();
   }, [router]);
 
   const login = async (credentials: LoginCredentials) => {
