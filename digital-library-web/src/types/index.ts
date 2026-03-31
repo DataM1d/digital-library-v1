@@ -2,9 +2,9 @@ export interface User {
   id: number;
   username: string;
   email: string;
-  role: 'user' | 'admin';
-  created_at?: string;
-  updated_at?: string;
+  role: 'user' | 'admin' | string;
+  created_at?: string | null;
+  updated_at?: string | null;
 }
 
 export interface LoginCredentials {
