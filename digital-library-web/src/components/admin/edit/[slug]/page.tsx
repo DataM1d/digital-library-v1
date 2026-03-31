@@ -30,7 +30,8 @@ export default function EditPostPage({ params }: { params: Promise<{ slug: strin
       </header>
 
       {loading ? (
-        <div className="flex flex-col items-center justify-center py-32 border-2 border-dashed border-zinc-100 dark:border-zinc-900 rounded-[3rem]">
+        <div className="relative overflow-hidden flex flex-col items-center justify-center py-32 border-2 border-dashed border-zinc-100 dark:border-zinc-900 rounded-[3rem]">
+          <div className="absolute inset-0 bg-linear-to-b from-transparent via-zinc-50/50 to-transparent dark:via-zinc-800/20 animate-scan pointer-events-none" />
           <Loader2 className="h-8 w-8 animate-spin text-zinc-300 mb-4" />
           <span className="text-[10px] font-black uppercase tracking-[0.3em] text-zinc-400">
             Accessing Archive Records...
