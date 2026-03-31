@@ -5,7 +5,7 @@ A high performance, production ready digital library ecosystem. This project dem
 Architectural Engineering Highlights.
 
 1. Domain Driven Onion Architecture (New):
-   Migrated the entire backend to a decoupled `Service Interface architecture`. By defining core logic in a central `domain` layer, the business rules remain independent of the database (Postgres) and the transport layer (Gin).
+   Migrated the entire backend to a decoupled Service Interface architecture. By defining core logic in a central domain layer, the business rules remain independent of the database (PostgreSQL) and the transport layer (Echo/Gin).
 
    Impact: Facilitated 100% unit test coverage via dependency injection and mock repositories
 
@@ -33,15 +33,20 @@ Architectural Engineering Highlights.
 Tech Stack.
 
 Backend: Go (1.22+).
-FrameWork: Gin Gonic (omptimized with custom JSON binding)
-Architecture: Domain Driven Design (DDD) with Repository Pattern.
-Security: JWT v5, blueMonday (UGC sanitization), Bcrypt (truncation safe), CORS Middleware, Rate Limiting (Token Bucket).
+   Framework: Echo / Gin (Optimized with custom JSON binding).
+
+   Architecture: Domain-Driven Design (DDD) with Repository Pattern.
+
+   Security: JWT v5, BlueMonday, Bcrypt, Token Bucket Rate Limiting. 
 
 Frontend: Next.Js (16) & React 19.
-Core: App Router, Server Actions, and Custom Hooks.
-State/Validation: TanStack Query & Zod.
-UI/UX: Tailwind CSS v4, Framer Motion, Lucide.
-Media: Custom Image Fallback system with BlurHash support.
+   Core: App Router, Server Components, and Custom Hooks.
+
+   State/Validation: TanStack Query & Zod.
+
+   UI/UX: Tailwind CSS v4, Framer Motion, Lucide Icons.
+
+   Media: Custom Image Fallback system with BlurHash support.
 
 Roadmap & Progress
 [Phase 1] Core Synchronization (Completed)
@@ -59,15 +64,6 @@ Roadmap & Progress
 - [ ] The Spatial Archive: A 3D "Vault" view using React Three Fiber.
 - [ ] Real time Sync: WebSockets for live comment thread updates.
 
-Dev Note: The "Turbopack Panic" Resolution
-   During development on React 19, a low level Rust panic was identified in the Turbopack build engine. This was resolved by:
-
-   Reverting to the stable Webpack based dev server (next dev).
-
-   Clearing corrupted task aggregation caches (rm -rf .next).
-
-   Configuring next.config.ts to allow upstream images from private local IPs.
-
 Installation & Setup
 1. Backend
 cp .env.example .env 
@@ -79,3 +75,12 @@ go run cmd/api/main.go
 cd frontend 
 npm install
 npm run dev
+
+Dev Note: The "Turbopack Panic" Resolution
+   During development on React 19, a low level Rust panic was identified in the Turbopack build engine. This was resolved by:
+
+   Reverting to the stable Webpack based dev server (next dev).
+
+   Clearing corrupted task aggregation caches (rm -rf .next).
+
+   Configuring next.config.ts to allow upstream images from private local IPs.
