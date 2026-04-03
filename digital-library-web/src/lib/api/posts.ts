@@ -18,7 +18,7 @@ export const postsApi = {
   like: (id: number) =>
     request<{ message: string }>({
       method: "POST",
-      url: `use/posts/id/${id}/like`,
+      url: `user/posts/id/${id}/like`,
     }),
 
   categories: () => 

@@ -39,6 +39,7 @@ export interface Post {
   meta_description?: string | null;
   og_image?: string | null;
   comments?: PostComment[];
+  comment_count?: number;
 }
 
 export interface PostComment {
