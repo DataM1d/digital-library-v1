@@ -1,26 +1,13 @@
-import { Archive } from "lucide-react";
-import { PostCard } from "@/components/posts/PostCard";
-import { SearchBar } from "@/components/discovery/SearchBar";
-import { CategoryFilter } from "@/components/archive/CategoryFilter";
+import { Activity, ShieldAlert, Terminal } from "lucide-react";
+import { Hero } from "@/components/layout/hero/Hero";
+import { ArtifactGrid } from "@/components/layout/ArtifactGrid";
+import { TechFooter } from "@/components/layout/TechFotter";
+import { GlobalGrid } from "@/components/layout/GlobalGrid";
 import { getPosts, getCategories } from "@/lib/api";
 import { Post, Category } from "@/types";
 
 interface HomePageProps {
-  searchParams: Promise<{
-    search?: string;
-    category?: string;
-    page?: string;
-  }>;
-}
-
-interface PostsResponse {
-  data: Post[];
-  meta: {
-    current_page: number;
-    limit: number;
-    total_items: number;
-    total_pages: number;
-  };
+  searchParams: Promise<{ search?: string; category?: string; page?: string }>;
 }
 
 async function fetchWithTimeout<T>(promise: Promise<T>, timeoutMs: number = 8000): Promise<T> {
@@ -31,11 +18,7 @@ async function fetchWithTimeout<T>(promise: Promise<T>, timeoutMs: number = 8000
 }
 
 export default async function HomePage({ searchParams }: HomePageProps) {
-  const resolvedParams = await searchParams;
-
-  const query = resolvedParams.search || "";
-  const category = resolvedParams.category || "";
-  const page = Number(resolvedParams.page) || 1;
+  const { search: query = "", category = "", page = "1" } = await searchParams;
 
   let posts: Post[] = [];
   let categories: Category[] = [];
@@ -43,10 +26,9 @@ export default async function HomePage({ searchParams }: HomePageProps) {
 
   try {
     const [postsData, categoriesData] = await Promise.all([
-      fetchWithTimeout<PostsResponse>(getPosts({ search: query, category, page })),
-      fetchWithTimeout<Category[]>(getCategories()).catch(() => [])
+      fetchWithTimeout(getPosts({ search: query, category, page: Number(page) })),
+      fetchWithTimeout(getCategories()).catch(() => [])
     ]);
-
     posts = postsData?.data ?? [];
     categories = categoriesData ?? [];
   } catch (error) {
@@ -55,59 +37,59 @@ export default async function HomePage({ searchParams }: HomePageProps) {
 
   if (hasError) {
     return (
-      <main className="flex min-h-screen items-center justify-center bg-white dark:bg-zinc-950">
-        <div className="text-center space-y-4">
-          <h2 className="text-sm font-black uppercase tracking-[0.4em] text-zinc-900 dark:text-white">
-            Connection Timeout
-          </h2>
-          <p className="text-[10px] text-zinc-400 uppercase tracking-widest">
-            Ensure backend is active at 127.0.0.1:8080
-          </p>
+      <main className="flex min-h-screen items-center justify-center bg-[#050505]">
+        <div className="relative flex flex-col items-center gap-8 group">
+          <div className="absolute inset-0 bg-red-500/10 blur-[100px] rounded-full animate-pulse" />
+          
+          <div className="relative flex h-20 w-20 items-center justify-center rounded-2xl bg-zinc-900 border border-red-500/20 shadow-[0_0_30px_rgba(239,68,68,0.1)]">
+            <ShieldAlert size={32} className="text-red-500" />
+          </div>
+
+          <div className="text-center space-y-2">
+            <h1 className="text-[12px] font-black uppercase tracking-[0.8em] text-white">System_Link_Severed</h1>
+            <p className="text-[9px] font-mono text-zinc-600 uppercase tracking-widest">Error_Code: 0x8004100E // Connection Timeout</p>
+          </div>
+
+          <button 
+            className="px-8 py-3 rounded-xl bg-white/5 border border-white/10 text-[10px] font-black uppercase tracking-[0.3em] text-zinc-400 hover:text-white hover:border-white/20 transition-all duration-500"
+          >
+            Re-Initialize Protocol
+          </button>
         </div>
       </main>
     );
   }
 
   return (
-    <main className="min-h-screen px-6 py-20 transition-colors bg-white dark:bg-zinc-950">
-      <div className="mx-auto max-w-7xl">
-        <header className="mb-16 flex flex-col items-center text-center space-y-8">
-          <div className="flex flex-col items-center gap-4">
-            <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-zinc-100 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 shadow-sm">
-              <Archive size={24} className="text-zinc-900 dark:text-zinc-100" />
-            </div>
-            <div className="space-y-2">
-              <h1 className="text-4xl font-black uppercase tracking-tighter text-zinc-900 dark:text-white sm:text-6xl">
-                The Digital Archive
-              </h1>
-              <p className="mx-auto max-w-md text-sm font-medium uppercase tracking-[0.2em] text-zinc-400 dark:text-zinc-500">
-                Curated Discoveries & Artifacts
-              </p>
-            </div>
-          </div>
-          
-          <div className="w-full max-w-2xl space-y-6">
-            <SearchBar defaultValue={query} />
-            <CategoryFilter categories={categories} activeCategory={category} />
-          </div>
-        </header>
+    <main className="relative min-h-screen bg-[#050505] overflow-hidden">
+      <GlobalGrid />
 
-        <section className="grid grid-cols-1 gap-x-8 gap-y-16 sm:grid-cols-2 lg:grid-cols-3">
-          {posts.length > 0 ? (
-            posts.map((post: Post) => (
-              <PostCard 
-                key={post.id} 
-                post={post} 
-              />
-            ))
-          ) : (
-            <div className="col-span-full py-40 text-center border-2 border-dashed border-zinc-100 dark:border-zinc-900 rounded-[3rem]">
-              <p className="text-xs font-black uppercase tracking-[0.3em] text-zinc-400">
-                {query ? `No records matching "${query}"` : "The archive is currently empty"}
-              </p>
-            </div>
-          )}
-        </section>
+      <div className="relative z-10 mx-auto max-w-7xl px-6 lg:px-8">
+        <div className="pt-12 pb-6 flex items-center justify-between opacity-20">
+          <div className="flex items-center gap-4">
+            <Terminal size={14} className="text-cyan-500" />
+            <span className="text-[8px] font-mono uppercase tracking-[0.4em]">Node_Status: Online</span>
+          </div>
+          <div className="flex items-center gap-4">
+            <div className="h-[1px] w-12 bg-zinc-800" />
+            <span className="text-[8px] font-mono uppercase tracking-[0.4em]">Region: SE_STOCKHOLM</span>
+          </div>
+        </div>
+
+        <Hero query={query} category={category} categories={categories} count={posts.length} />
+        
+        <div className="mt-24">
+          <ArtifactGrid posts={posts} />
+        </div>
+
+        <TechFooter />
+      </div>
+
+      <div className="fixed left-8 top-1/2 -translate-y-1/2 hidden 2xl:flex flex-col gap-12 opacity-20">
+        <div className="[writing-mode:vertical-lr] rotate-180 text-[7px] font-black uppercase tracking-[1em] text-zinc-500">
+          Data_Stream_Access
+        </div>
+        <div className="h-24 w-px bg-gradient-to-b from-transparent via-zinc-500 to-transparent mx-auto" />
       </div>
     </main>
   );

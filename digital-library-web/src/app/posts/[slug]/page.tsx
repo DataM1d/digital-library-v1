@@ -140,7 +140,7 @@ export default function PostDetailPage({ params }: { params: Promise<{ slug: str
             <h3 className="text-xs font-black uppercase tracking-[0.3em] text-zinc-400">Archive Discussion</h3>
             <div className="h-px flex-1 bg-zinc-100 dark:bg-zinc-900" />
           </div>
-          <CommentSection postSlug={slug} />
+          <CommentSection postId={post.id} />
         </section>
       </article>
     </main>
