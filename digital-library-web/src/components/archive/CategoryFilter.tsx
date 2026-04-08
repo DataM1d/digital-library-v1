@@ -33,9 +33,9 @@ export function CategoryFilter({ categories, activeCategory: propActiveCategory 
   };
 
   return (
-    <div className={`flex flex-wrap gap-2 mb-8 transition-opacity ${isPending ? "opacity-50" : "opacity-100"}`}>
+    <div className={`flex flex-wrap gap-3 mb-12 transition-all duration-500 ${isPending ? "opacity-40 grayscale" : "opacity-100"}`}>
       <FilterChip 
-        label="All Artifacts" 
+        label="All_Artifacts" 
         active={activeCategory === "all" || activeCategory === ""} 
         onClick={() => handleCategoryChange("all")} 
         disabled={isPending}
@@ -69,14 +69,23 @@ function FilterChip({
       type="button"
       onClick={onClick}
       disabled={disabled}
-      className={`px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest transition-all border
-        ${disabled ? "cursor-wait opacity-70" : "cursor-pointer"}
+      className={`relative group px-5 py-2 rounded-xl text-[9px] font-black uppercase tracking-[0.3em] transition-all duration-500 border isolate
+        ${disabled ? "cursor-wait" : "cursor-pointer"}
         ${active 
-          ? "bg-black text-white border-black dark:bg-white dark:text-black dark:border-white shadow-md scale-105" 
-          : "bg-transparent text-zinc-500 border-zinc-200 hover:border-zinc-800 dark:border-zinc-800 dark:hover:border-zinc-400"
+          ? "bg-white/5 text-cyan-400 border-cyan-500/40 shadow-[0_0_20px_rgba(34,211,238,0.15)]" 
+          : "bg-transparent text-zinc-600 border-white/5 hover:border-white/20 hover:text-zinc-300"
         }`}
     >
-      {label}
+      {active && (
+        <div className="absolute inset-0 bg-cyan-500/5 blur-md rounded-xl -z-10" />
+      )}
+      
+      <div className="flex items-center gap-2">
+        {active && <div className="w-1 h-1 rounded-full bg-cyan-400 animate-pulse" />}
+        {label.replace(" ", "_")}
+      </div>
+
+      <div className={`absolute bottom-0 left-1/2 -translate-x-1/2 h-[1px] bg-cyan-500 transition-all duration-700 ${active ? "w-1/2" : "w-0"}`} />
     </button>
   );
 }

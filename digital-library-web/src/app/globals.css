@@ -1,19 +1,90 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #111827;
-}
-
-@media (prefers-color-scheme: dark) {
+@layer base {
   :root {
-    --background: #030712;
-    --foreground: #f9fafb;
+    --background: 2 2 2;
+    --foreground: 255 255 255;
+    --surface-1: 10 10 10;
+    --surface-2: 20 20 20;
+    --primary-accent: 0 122 255;
+    --border: 24 24 27;
+    --radius: 0px;
+    --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    --font-mono: 'JetBrains Mono', monospace;
+  }
+
+ * {
+    border-color: rgb(var(--border));
+    @apply antialiased selection:bg-white selection:text-black;
+  }
+
+  body {
+    background-color: rgb(var(--background));
+    color: rgba(var(--foreground), 0.8);
+    font-family: var(--font-sans);
+    letter-spacing: -0.01em;
+    overflow-x: hidden;
+  }
+
+ h1 {
+    @apply text-[48px] md:text-[80px] font-bold tracking-[-0.04em] leading-[0.85] text-white uppercase;
+  }
+
+  h2 {
+    @apply text-[18px] font-semibold tracking-[-0.02em] text-white uppercase;
+  }
+
+  p {
+    @apply text-[15px] leading-relaxed text-[#A1A1AA];
+  }
+
+  small, .mono-label {
+    font-family: var(--font-mono);
+    @apply text-[10px] uppercase tracking-[0.2em] font-bold text-zinc-500;
+  }
+
+  ::-webkit-scrollbar {
+    width: 4px;
+  }
+
+  ::-webkit-scrollbar-track {
+    background: rgb(var(--background));
+  }
+
+  ::-webkit-scrollbar-thumb {
+    background: #27272a;
+    border-radius: 0px;
   }
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: ui-sans-serif, system-ui, sans-serif;
+@layer utilities {
+  .system-grid {
+    background-image: 
+      radial-gradient(circle at 1px 1px, rgba(255,255,255,0.03) 1px, transparent 0);
+    background-size: 24px 24px;
+  }
+
+  .industrial-card {
+    @apply bg-transparent border border-zinc-900 transition-all duration-75;
+  }
+
+  .industrial-card:hover {
+    @apply bg-white border-white;
+  }
+
+  .industrial-card:hover * {
+    @apply text-black border-black/10;
+  }
+
+  .loading-bar {
+    @apply fixed top-0 left-0 h-px bg-white z-9999 transition-all duration-500;
+  }
+
+  .snap-transition {
+    transition: all 150ms cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  .hard-shadow {
+    box-shadow: 4px 4px 0px 0px rgba(0,0,0,1);
+  }
 }

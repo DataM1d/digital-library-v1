@@ -1,12 +1,16 @@
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
-import { Navbar } from "@/components/layout/Navbar";
+import { Navbar } from "@/components/layout/navbar";
 import { Toaster } from "sonner";
 import Providers from "@/components/providers/Providers"; 
 
 import "./globals.css";
 
-const inter = Inter({ subsets: ["latin"], variable: "--font-inter" });
+const inter = Inter({ 
+  subsets: ["latin"], 
+  variable: "--font-inter",
+  display: 'swap',
+});
 
 export const metadata: Metadata = {
   title: {
@@ -19,14 +23,31 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" suppressHydrationWarning>
-      <body className={`${inter.variable} font-sans antialiased bg-white dark:bg-zinc-950 text-zinc-900 dark:text-zinc-50`}>
+    <html lang="en" suppressHydrationWarning className="scroll-smooth">
+      <body className={`${inter.variable} font-sans antialiased bg-black selection:bg-white selection:text-black`}>
         <Providers>
-          <Toaster position="bottom-right" richColors />
-          <Navbar />
-          <main className="relative flex min-h-screen flex-col">
-            {children}
-          </main>
+          <Toaster 
+            position="bottom-right" 
+            theme="dark"
+            toastOptions={{
+              className: "bg-black border border-zinc-800 text-white font-mono text-[10px] uppercase tracking-widest rounded-none",
+              style: {
+                background: '#000000',
+                border: '1px solid #18181b',
+              }
+            }}
+            richColors 
+          />
+          
+          <div className="relative flex min-h-screen flex-col">
+            <Navbar />
+            
+            <main className="flex-1 pt-20">
+              {children}
+            </main>
+
+            <div className="system-grid fixed inset-0 pointer-events-none z-[-1]" />
+          </div>
         </Providers>
       </body>
     </html>
