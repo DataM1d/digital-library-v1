@@ -24,16 +24,16 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en" suppressHydrationWarning className="scroll-smooth">
-      <body className={`${inter.variable} font-sans antialiased bg-black selection:bg-white selection:text-black`}>
+      <body className={`${inter.variable} font-sans antialiased bg-[#FAFAFA] text-zinc-900 selection:bg-black selection:text-white`}>
         <Providers>
           <Toaster 
             position="bottom-right" 
-            theme="dark"
+            theme="light"
             toastOptions={{
-              className: "bg-black border border-zinc-800 text-white font-mono text-[10px] uppercase tracking-widest rounded-none",
+              className: "bg-white border border-zinc-200 text-zinc-900 font-sans text-[10px] uppercase tracking-widest rounded-none",
               style: {
-                background: '#000000',
-                border: '1px solid #18181b',
+                background: '#FFFFFF',
+                border: '1px solid #E4E4E7',
               }
             }}
             richColors 

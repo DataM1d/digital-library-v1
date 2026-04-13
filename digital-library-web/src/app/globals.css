@@ -2,45 +2,45 @@
 
 @layer base {
   :root {
-    --background: 2 2 2;
-    --foreground: 255 255 255;
-    --surface-1: 10 10 10;
-    --surface-2: 20 20 20;
-    --primary-accent: 0 122 255;
-    --border: 24 24 27;
+    --background: 250 250 250; /* #FAFAFA */
+    --foreground: 24 24 27;    /* #18181B */
+    --surface-1: 255 255 255;  /* #FFFFFF */
+    --surface-2: 244 244 245;  /* #F4F4F5 */
+    --primary-accent: 0 0 0;   /* #000000 */
+    --border: 228 228 231;     /* #E4E4E7 */
     --radius: 0px;
     --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
     --font-mono: 'JetBrains Mono', monospace;
   }
 
- * {
+  * {
     border-color: rgb(var(--border));
-    @apply antialiased selection:bg-white selection:text-black;
+    @apply antialiased selection:bg-black selection:text-white;
   }
 
   body {
     background-color: rgb(var(--background));
-    color: rgba(var(--foreground), 0.8);
+    color: rgb(var(--foreground));
     font-family: var(--font-sans);
     letter-spacing: -0.01em;
     overflow-x: hidden;
   }
 
- h1 {
-    @apply text-[48px] md:text-[80px] font-bold tracking-[-0.04em] leading-[0.85] text-white uppercase;
+  h1 {
+    @apply text-[48px] md:text-[80px] font-medium tracking-[-0.03em] leading-[0.9] text-black uppercase;
   }
 
   h2 {
-    @apply text-[18px] font-semibold tracking-[-0.02em] text-white uppercase;
+    @apply text-[18px] font-medium tracking-[-0.01em] text-black uppercase;
   }
 
   p {
-    @apply text-[15px] leading-relaxed text-[#A1A1AA];
+    @apply text-[15px] leading-relaxed text-zinc-600;
   }
 
   small, .mono-label {
     font-family: var(--font-mono);
-    @apply text-[10px] uppercase tracking-[0.2em] font-bold text-zinc-500;
+    @apply text-[10px] uppercase tracking-[0.2em] font-bold text-zinc-400;
   }
 
   ::-webkit-scrollbar {
@@ -52,7 +52,7 @@
   }
 
   ::-webkit-scrollbar-thumb {
-    background: #27272a;
+    background: #e4e4e7;
     border-radius: 0px;
   }
 }
@@ -60,24 +60,20 @@
 @layer utilities {
   .system-grid {
     background-image: 
-      radial-gradient(circle at 1px 1px, rgba(255,255,255,0.03) 1px, transparent 0);
+      radial-gradient(circle at 1px 1px, rgba(0,0,0,0.03) 1px, transparent 0);
     background-size: 24px 24px;
   }
 
   .industrial-card {
-    @apply bg-transparent border border-zinc-900 transition-all duration-75;
+    @apply bg-white border border-zinc-200 transition-all duration-200;
   }
 
   .industrial-card:hover {
-    @apply bg-white border-white;
-  }
-
-  .industrial-card:hover * {
-    @apply text-black border-black/10;
+    @apply border-zinc-900;
   }
 
   .loading-bar {
-    @apply fixed top-0 left-0 h-px bg-white z-9999 transition-all duration-500;
+    @apply fixed top-0 left-0 h-px bg-black z-9999 transition-all duration-500;
   }
 
   .snap-transition {
@@ -85,6 +81,6 @@
   }
 
   .hard-shadow {
-    box-shadow: 4px 4px 0px 0px rgba(0,0,0,1);
+    box-shadow: 4px 4px 0px 0px rgba(0,0,0,0.05);
   }
 }
