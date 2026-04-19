@@ -4,61 +4,50 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"image"
-	_ "image/jpeg"
-	_ "image/png"
-	"log"
-	"os"
-	"path/filepath"
-	"strings"
 
 	"github.com/DataM1d/digital-library/internal/domain"
 	"github.com/DataM1d/digital-library/internal/models"
-	"github.com/DataM1d/digital-library/pkg/utils"
-	"github.com/buckket/go-blurhash"
-	"github.com/microcosm-cc/bluemonday"
 )
 
 type postService struct {
-	repo    domain.PostRepo
-	tagRepo domain.TagRepo
+	repo         domain.PostRepo
+	tagRepo      domain.TagRepo
+	imageService domain.ImageService
+	slugService  domain.SlugService
+	sanitizer    domain.Sanitizer
 }
 
-func NewPostService(repo domain.PostRepo, tagRepo domain.TagRepo) domain.PostService {
+func NewPostService(
+	repo domain.PostRepo,
+	tagRepo domain.TagRepo,
+	img domain.ImageService,
+	slug domain.SlugService,
+	san domain.Sanitizer,
+) domain.PostService {
 	return &postService{
-		repo:    repo,
-		tagRepo: tagRepo,
+		repo:         repo,
+		tagRepo:      tagRepo,
+		imageService: img,
+		slugService:  slug,
+		sanitizer:    san,
 	}
 }
 
 func (s *postService) CreateLibraryEntry(ctx context.Context, post *models.Post, tagNames []string, userRole string, userID int) error {
 	if userRole != "admin" {
-		return errors.New("unauthorized: system access restricted to admin")
+		return errors.New("unauthorized")
 	}
 
-	strict := bluemonday.StrictPolicy()
-	ugc := bluemonday.UGCPolicy()
-
-	post.Title = strict.Sanitize(post.Title)
-	post.Content = ugc.Sanitize(post.Content)
+	// Logic moved to internal/service/sanitizer.go
+	s.sanitizer.Sanitize(post)
 	post.CreatedBy = userID
 
 	if post.Status == "" {
 		post.Status = "published"
 	}
 
-	if post.ImageURL != "" {
-		cleanPath := strings.TrimPrefix(post.ImageURL, "/")
-		fullPath := filepath.Join(".", cleanPath)
-		if hash, err := s.generateBlurHash(fullPath); err == nil {
-			post.BlurHash = hash
-		} else {
-			log.Printf("Archive Warning: BlurHash generation failed: %v", err)
-		}
-	}
-
-	baseSlug := utils.GenerateSlug(post.Title)
-	finalSlug, err := s.generateUniqueSlug(ctx, baseSlug)
+	// Logic moved to internal/service/slug_service.go
+	finalSlug, err := s.slugService.GenerateUniqueSlug(ctx, post.Title)
 	if err != nil {
 		return fmt.Errorf("archive: slug generation failed: %w", err)
 	}
@@ -83,20 +72,9 @@ func (s *postService) UpdatePost(ctx context.Context, post *models.Post, tagName
 		return errors.New("unauthorized: system update restricted")
 	}
 
-	strict := bluemonday.StrictPolicy()
-	ugc := bluemonday.UGCPolicy()
-
-	post.Title = strict.Sanitize(post.Title)
-	post.Content = ugc.Sanitize(post.Content)
+	// Use the central sanitizer
+	s.sanitizer.Sanitize(post)
 	post.LastModifiedBy = userID
-
-	if post.ImageURL != "" {
-		cleanPath := strings.TrimPrefix(post.ImageURL, "/")
-		fullPath := filepath.Join(".", cleanPath)
-		if hash, err := s.generateBlurHash(fullPath); err == nil {
-			post.BlurHash = hash
-		}
-	}
 
 	return s.repo.WithTransaction(ctx, func(txRepo domain.PostRepo) error {
 		if err := txRepo.Update(ctx, post); err != nil {
@@ -163,34 +141,13 @@ func (s *postService) UpdateBlurHash(ctx context.Context, postID int, hash strin
 	return s.repo.UpdateBlurHash(ctx, postID, hash)
 }
 
-func (s *postService) generateBlurHash(imagePath string) (string, error) {
-	file, err := os.Open(imagePath)
+func (s *postService) UpdateBlurHashAsync(localPath string, postID int) {
+	// Logic moved to internal/service/image_service.go
+	hash, err := s.imageService.GenerateBlurHash(localPath)
 	if err != nil {
-		return "", err
+		return
 	}
-	defer file.Close()
-
-	img, _, err := image.Decode(file)
-	if err != nil {
-		return "", err
-	}
-
-	return blurhash.Encode(4, 3, img)
-}
-
-func (s *postService) generateUniqueSlug(ctx context.Context, baseSlug string) (string, error) {
-	currentSlug := baseSlug
-	for i := 1; i <= 10; i++ {
-		exists, err := s.repo.SlugExists(ctx, currentSlug)
-		if err != nil {
-			return "", err
-		}
-		if !exists {
-			return currentSlug, nil
-		}
-		currentSlug = fmt.Sprintf("%s-%s", baseSlug, utils.RandomString(4))
-	}
-	return currentSlug, nil
+	_ = s.repo.UpdateBlurHash(context.Background(), postID, hash)
 }
 
 func (s *postService) ToggleLike(ctx context.Context, userID, postID int) (bool, error) {
@@ -206,33 +163,6 @@ func (s *postService) CleanupOrphanedFiles(ctx context.Context) (int, error) {
 	if err != nil {
 		return 0, err
 	}
-
-	activeMap := make(map[string]bool)
-	for _, url := range activeFiles {
-		if url != "" {
-			activeMap[filepath.Base(url)] = true
-		}
-	}
-
-	uploadDir := "./uploads"
-	files, err := os.ReadDir(uploadDir)
-	if err != nil {
-		return 0, err
-	}
-
-	removedCount := 0
-	for _, file := range files {
-		if file.IsDir() {
-			continue
-		}
-
-		if !activeMap[file.Name()] {
-			err := os.Remove(filepath.Join(uploadDir, file.Name()))
-			if err == nil {
-				removedCount++
-			}
-		}
-	}
-
-	return removedCount, nil
+	// Logic moved to internal/service/image_service.go
+	return s.imageService.CleanupOrphanedFiles(ctx, activeFiles)
 }
