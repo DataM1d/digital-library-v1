@@ -37,13 +37,23 @@ func main() {
 	commentRepo := repository.NewCommentRepository(db)
 	tagRepo := repository.NewTagRepository(db)
 
+	imageService := service.NewImageService("./uploads")
+	sanitizer := service.NewSanitizer()
+	slugService := service.NewSlugService(postRepo)
+
 	userService := service.NewUserService(userRepo)
-	postService := service.NewPostService(postRepo, tagRepo)
+	postService := service.NewPostService(
+		postRepo,
+		tagRepo,
+		imageService,
+		slugService,
+		sanitizer,
+	)
 	catService := service.NewCategoryService(catRepo)
 	commentService := service.NewCommentService(commentRepo, postRepo)
 
 	authHandler := handlers.NewAuthHandler(userService)
-	postHandler := handlers.NewPostHandler(postService)
+	postHandler := handlers.NewPostHandler(postService, imageService)
 	catHandler := handlers.NewCategoryHandler(catService)
 	commentHandler := handlers.NewCommentHandler(commentService)
 
