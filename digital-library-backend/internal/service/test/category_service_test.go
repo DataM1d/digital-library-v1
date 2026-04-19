@@ -1,10 +1,11 @@
-package service
+package service_test
 
 import (
 	"context"
 	"testing"
 
 	"github.com/DataM1d/digital-library/internal/models"
+	"github.com/DataM1d/digital-library/internal/service"
 )
 
 type MockCategoryRepo struct {
@@ -33,10 +34,10 @@ func TestCategoryService_CreateCategory(t *testing.T) {
 			},
 		}
 
-		service := NewCategoryService(mockRepo)
+		svc := service.NewCategoryService(mockRepo)
 		inputName := "<script>alert('xss')</script>Historical Documents"
 
-		category, err := service.CreateCategory(ctx, inputName, "admin")
+		category, err := svc.CreateCategory(ctx, inputName, "admin")
 
 		if err != nil {
 			t.Fatalf("Expected nil error, got %v", err)
@@ -59,9 +60,9 @@ func TestCategoryService_CreateCategory(t *testing.T) {
 
 	t.Run("Unauthorized creation attempt", func(t *testing.T) {
 		mockRepo := &MockCategoryRepo{}
-		service := NewCategoryService(mockRepo)
+		svc := service.NewCategoryService(mockRepo)
 
-		_, err := service.CreateCategory(ctx, "New Category", "user")
+		_, err := svc.CreateCategory(ctx, "New Category", "user")
 
 		if err == nil {
 			t.Error("Expected error for non-admin user, got nil")

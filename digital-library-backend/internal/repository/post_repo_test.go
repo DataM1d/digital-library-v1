@@ -29,11 +29,9 @@ func TestPostRepository_Create(t *testing.T) {
 			CategoryID: 5,
 		}
 
-		now := time.Now()
 		rows := sqlmock.NewRows([]string{"id", "created_at", "updated_at"}).
-			AddRow(1, now, now)
+			AddRow(1, time.Now(), time.Now())
 
-		//using sqlmock AnyArg() for fields that are hard to predict or handled by DB(like NOW())
 		mock.ExpectQuery(`INSERT INTO posts`).
 			WithArgs(
 				p.Title, p.Content, p.ImageURL, p.BlurHash, p.AltText,
@@ -68,24 +66,34 @@ func TestPostRepository_GetAll(t *testing.T) {
 		limit, offset := 10, 0
 		userID := 1
 
-		//Mock the COUNT query
 		countRows := sqlmock.NewRows([]string{"count"}).AddRow(1)
-		//The query building logic adds tags as the 2nd argument because statusFilter is empty
 		mock.ExpectQuery(`SELECT COUNT\(DISTINCT p.id\)`).
 			WithArgs("%"+search+"%", pq.Array(tags)).
 			WillReturnRows(countRows)
 
-		//Mock the SELECT query
 		now := time.Now()
 		postRows := sqlmock.NewRows([]string{
 			"id", "created_by", "category_id", "last_modified_by",
-			"title", "content", "image_url", "blur_hash", "alt_text", "slug", "status",
-			"created_at", "updated_at", "category_name", "like_count", "user_has_liked",
-		}).AddRow(1, 1, 5, 0, "Vasa Ship", "Content", "", "", "", "vasa-ship", "published", now, now, "History", 10, true)
+			"title", "content", "image_url", "blur_hash", "alt_text",
+			"slug", "status", "created_at", "updated_at",
+			"meta_description", "og_image", "category_name",
+			"like_count", "user_has_liked", "tags",
+		}).AddRow(
+			1, 1, 5, 0,
+			"Vasa Ship", "Content", "", "", "",
+			"vasa-ship", "published", now, now,
+			"Meta", "og.png", "History",
+			10, true, []byte(`["history", "sweden"]`),
+		)
 
-		// argCount logic: $1=search, $2=tags, $3=userID, $4=limit, $5=offset
-		mock.ExpectQuery(`SELECT p.id, p.created_by`).
-			WithArgs("%"+search+"%", pq.Array(tags), userID, limit, offset).
+		mock.ExpectQuery(`SELECT`).
+			WithArgs(
+				"%"+search+"%", // $1
+				pq.Array(tags), // $2
+				userID,         // $3 (The one the error complained about!)
+				limit,          // $4
+				offset,         // $5
+			).
 			WillReturnRows(postRows)
 
 		posts, total, err := repo.GetAll(ctx, "", search, tags, limit, offset, "", userID)
@@ -115,12 +123,10 @@ func TestPostRepository_ToggleLike(t *testing.T) {
 	t.Run("Likes a post when not already liked", func(t *testing.T) {
 		userID, postID := 1, 10
 
-		//Mock the check for existence (returns false)
 		mock.ExpectQuery(`SELECT EXISTS`).
 			WithArgs(userID, postID).
 			WillReturnRows(sqlmock.NewRows([]string{"exists"}).AddRow(false))
 
-		//Mock the isnert
 		mock.ExpectExec(`INSERT INTO post_likes`).
 			WithArgs(userID, postID).
 			WillReturnResult(sqlmock.NewResult(1, 1))

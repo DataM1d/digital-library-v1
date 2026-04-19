@@ -1,10 +1,11 @@
-package service
+package service_test
 
 import (
 	"context"
 	"testing"
 
 	"github.com/DataM1d/digital-library/internal/models"
+	"github.com/DataM1d/digital-library/internal/service"
 )
 
 type MockCommentRepo struct {
@@ -31,13 +32,13 @@ func TestCommentService_AddComment(t *testing.T) {
 				return nil
 			},
 		}
-		service := NewCommentService(mockRepo, nil)
+		svc := service.NewCommentService(mockRepo, nil)
 
 		content := "<script>alert('xss')</script>Safe text"
 		postID := 100
 		userID := 1
 
-		comment, err := service.AddComment(ctx, postID, userID, content, nil)
+		comment, err := svc.AddComment(ctx, postID, userID, content, nil)
 
 		if err != nil {
 			t.Fatalf("Expected nil error, got %v", err)
@@ -72,8 +73,8 @@ func TestCommentService_BuildCommentTree(t *testing.T) {
 			},
 		}
 
-		service := NewCommentService(mockRepo, nil)
-		tree, err := service.GetCommentsByPost(ctx, postID)
+		svc := service.NewCommentService(mockRepo, nil)
+		tree, err := svc.GetCommentsByPost(ctx, postID)
 
 		if err != nil {
 			t.Fatalf("Failed to get comments: %v", err)

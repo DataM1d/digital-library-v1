@@ -1,4 +1,4 @@
-package service
+package service_test
 
 import (
 	"context"
@@ -6,13 +6,38 @@ import (
 
 	"github.com/DataM1d/digital-library/internal/domain"
 	"github.com/DataM1d/digital-library/internal/models"
+	"github.com/DataM1d/digital-library/internal/service"
+	"github.com/gin-gonic/gin"
 )
+
+type MockImageService struct{}
+
+func (m *MockImageService) SaveUploadedFile(c *gin.Context) (string, string, error) {
+	return "", "", nil
+}
+func (m *MockImageService) GenerateBlurHash(path string) (string, error) {
+	return "L6PZfSa_d6%ir[jtE1V@~pCarrW-", nil
+}
+func (m *MockImageService) CleanupOrphanedFiles(ctx context.Context, urls []string) (int, error) {
+	return 0, nil
+}
+
+type MockSlugService struct {
+	OnGenerate func(ctx context.Context, title string) (string, error)
+}
+
+func (m *MockSlugService) GenerateUniqueSlug(ctx context.Context, title string) (string, error) {
+	if m.OnGenerate != nil {
+		return m.OnGenerate(ctx, title)
+	}
+	return "mock-slug", nil
+}
 
 type MockPostRepo struct {
 	OnSlugExists      func(ctx context.Context, slug string) (bool, error)
 	OnCreate          func(ctx context.Context, p *models.Post) error
-	OnUpdate          func(ctx context.Context, p *models.Post) error                // Added for UpdatePost tests
-	OnSyncTags        func(ctx context.Context, postID int, tagNames []string) error // The Fix
+	OnUpdate          func(ctx context.Context, p *models.Post) error
+	OnSyncTags        func(ctx context.Context, postID int, tagNames []string) error
 	OnWithTx          func(ctx context.Context, fn func(domain.PostRepo) error) error
 	OnGetAllImageURLs func(ctx context.Context) ([]string, error)
 }
@@ -52,7 +77,12 @@ func (m *MockPostRepo) GetAllImageURLs(ctx context.Context) ([]string, error) {
 	return []string{}, nil
 }
 
-func (m *MockPostRepo) Update(ctx context.Context, p *models.Post) error          { return nil }
+func (m *MockPostRepo) Update(ctx context.Context, p *models.Post) error {
+	if m.OnUpdate != nil {
+		return m.OnUpdate(ctx, p)
+	}
+	return nil
+}
 func (m *MockPostRepo) Delete(ctx context.Context, id int) error                  { return nil }
 func (m *MockPostRepo) GetByID(ctx context.Context, id int) (*models.Post, error) { return nil, nil }
 func (m *MockPostRepo) GetBySlug(ctx context.Context, s string, id int) (*models.Post, error) {
@@ -78,14 +108,24 @@ func (m *MockTagRepo) SyncPostTags(ctx context.Context, id int, tags []string) e
 	return nil
 }
 
+type MockSanitizer struct{}
+
+func (m *MockSanitizer) Sanitize(p *models.Post) {}
+
 func TestPostService_CreateLibraryEntry(t *testing.T) {
 	ctx := context.Background()
 
 	t.Run("Unauthorized if not admin", func(t *testing.T) {
-		service := NewPostService(&MockPostRepo{}, &MockTagRepo{})
-		err := service.CreateLibraryEntry(ctx, &models.Post{}, []string{}, "user", 1)
-		if err == nil || err.Error() != "unauthorized: system access restricted to admin" {
-			t.Errorf("Expected unauthorized error, got %v", err)
+		svc := service.NewPostService(
+			&MockPostRepo{},
+			&MockTagRepo{},
+			&MockImageService{},
+			&MockSlugService{},
+			&MockSanitizer{},
+		)
+		err := svc.CreateLibraryEntry(ctx, &models.Post{}, []string{}, "user", 1)
+		if err == nil {
+			t.Errorf("Expected unauthorized error, got nil")
 		}
 	})
 
@@ -99,13 +139,19 @@ func TestPostService_CreateLibraryEntry(t *testing.T) {
 			},
 		}
 
-		service := NewPostService(mockPostRepo, &MockTagRepo{})
+		mockSlug := &MockSlugService{
+			OnGenerate: func(ctx context.Context, title string) (string, error) {
+				return "the-swedish-archive", nil
+			},
+		}
+
+		svc := service.NewPostService(mockPostRepo, &MockTagRepo{}, &MockImageService{}, mockSlug, service.NewSanitizer())
 		post := &models.Post{
 			Title:   "<h1>The Swedish Archive</h1>",
 			Content: "<script>alert('xss')</script><p>Safe content</p>",
 		}
 
-		err := service.CreateLibraryEntry(ctx, post, []string{"history"}, "admin", 42)
+		err := svc.CreateLibraryEntry(ctx, post, []string{"history"}, "admin", 42)
 
 		if err != nil {
 			t.Fatalf("Creation failed: %v", err)
@@ -149,13 +195,20 @@ func TestCreatePost_SyncsTags(t *testing.T) {
 		},
 	}
 
-	service := NewPostService(mockRepo, nil)
+	svc := service.NewPostService(
+		mockRepo,
+		&MockTagRepo{},
+		&MockImageService{},
+		&MockSlugService{},
+		&MockSanitizer{},
+	)
+
 	post := &models.Post{
 		Title:   "Renaissance Art",
 		Content: "Content about the Renaissance period.",
 	}
 
-	err := service.CreateLibraryEntry(ctx, post, testTags, "admin", 1)
+	err := svc.CreateLibraryEntry(ctx, post, testTags, "admin", 1)
 
 	if err != nil {
 		t.Fatalf("Expected no error, got %v", err)

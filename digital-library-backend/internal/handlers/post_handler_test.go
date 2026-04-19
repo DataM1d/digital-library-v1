@@ -21,12 +21,41 @@ type MockPostService struct {
 	OnToggleLike           func(ctx context.Context, uID, pID int) (bool, error)
 	OnGetLiked             func(ctx context.Context, uID int) ([]models.Post, error)
 	OnUpdateHash           func(ctx context.Context, id int, hash string) error
+	OnUpdateBlurHashAsync  func(localPath string, postID int)
 	OnCleanupOrphanedFiles func(ctx context.Context) (int, error)
 }
 
-func (m *MockPostService) CreateLibraryEntry(ctx context.Context, p *models.Post, t []string, r string, uID int) error {
-	return m.OnCreate(ctx, p, t, r, uID)
+type MockImageService struct {
+	OnSaveUploadedFile func(c *gin.Context) (string, string, error)
 }
+
+func (m *MockImageService) SaveUploadedFile(c *gin.Context) (string, string, error) {
+	if m.OnSaveUploadedFile != nil {
+		return m.OnSaveUploadedFile(c)
+	}
+	// Default behavior: check if image file exists
+	_, _, err := c.Request.FormFile("image")
+	if err != nil {
+		return "", "", err
+	}
+	return "", "", nil
+}
+
+func (m *MockImageService) GenerateBlurHash(imageURL string) (string, error) {
+	return "", nil
+}
+
+func (m *MockImageService) CleanupOrphanedFiles(ctx context.Context, allActiveURLs []string) (int, error) {
+	return 0, nil
+}
+
+func (m *MockPostService) CreateLibraryEntry(ctx context.Context, p *models.Post, t []string, r string, uID int) error {
+	if m.OnCreate != nil {
+		return m.OnCreate(ctx, p, t, r, uID)
+	}
+	return nil
+}
+
 func (m *MockPostService) GetPostBySlug(ctx context.Context, s string, uID int) (*models.Post, error) {
 	return m.OnGetBySlug(ctx, s, uID)
 }
@@ -48,6 +77,11 @@ func (m *MockPostService) GetLikedPosts(ctx context.Context, uID int) ([]models.
 func (m *MockPostService) UpdateBlurHash(ctx context.Context, id int, h string) error {
 	return m.OnUpdateHash(ctx, id, h)
 }
+func (m *MockPostService) UpdateBlurHashAsync(localPath string, postID int) {
+	if m.OnUpdateBlurHashAsync != nil {
+		m.OnUpdateBlurHashAsync(localPath, postID)
+	}
+}
 func (m *MockPostService) CleanupOrphanedFiles(ctx context.Context) (int, error) {
 	return m.OnCleanupOrphanedFiles(ctx)
 }
@@ -56,7 +90,7 @@ func TestPostHandler_CreatePost(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 
 	t.Run("Fails without image in multipart form", func(t *testing.T) {
-		h := NewPostHandler(&MockPostService{})
+		h := NewPostHandler(&MockPostService{}, &MockImageService{})
 		r := gin.Default()
 		r.POST("/posts", h.CreatePost)
 
@@ -87,7 +121,13 @@ func TestPostHandler_CreatePost(t *testing.T) {
 			},
 		}
 
-		h := NewPostHandler(mockService)
+		mockImageService := &MockImageService{
+			OnSaveUploadedFile: func(c *gin.Context) (string, string, error) {
+				return "uploads/test.png", "/tmp/test.png", nil
+			},
+		}
+
+		h := NewPostHandler(mockService, mockImageService)
 		r := gin.Default()
 		r.POST("/posts", func(c *gin.Context) {
 			c.Set("role", "admin")
@@ -128,7 +168,9 @@ func TestPostHandler_GetPosts(t *testing.T) {
 			},
 		}
 
-		h := NewPostHandler(mockService)
+		mockImageService := &MockImageService{}
+
+		h := NewPostHandler(mockService, mockImageService)
 		r := gin.Default()
 		r.GET("/posts", h.GetPosts)
 

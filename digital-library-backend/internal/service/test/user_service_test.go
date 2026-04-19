@@ -1,10 +1,11 @@
-package service
+package service_test
 
 import (
 	"context"
 	"testing"
 
 	"github.com/DataM1d/digital-library/internal/models"
+	"github.com/DataM1d/digital-library/internal/service"
 )
 
 type MockUserRepository struct {
@@ -33,8 +34,8 @@ func TestRegisterUser(t *testing.T) {
 			},
 		}
 
-		service := NewUserService(mockRepo)
-		_, err := service.Register(ctx, "newuser", "exists@test.com", "password123")
+		svc := service.NewUserService(mockRepo)
+		_, err := svc.Register(ctx, "newuser", "exists@test.com", "password123")
 
 		if err == nil {
 			t.Error("Expected error when email exists, got nil")
@@ -53,8 +54,8 @@ func TestRegisterUser(t *testing.T) {
 			},
 		}
 
-		service := NewUserService(mockRepo)
-		_, err := service.Register(ctx, "collector1", "new@test.com", "secure-pass-123")
+		svc := service.NewUserService(mockRepo)
+		_, err := svc.Register(ctx, "collector1", "new@test.com", "secure-pass-123")
 
 		if err != nil {
 			t.Fatalf("Registration failed: %v", err)
