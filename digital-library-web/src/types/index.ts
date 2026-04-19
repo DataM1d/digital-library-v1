@@ -18,7 +18,7 @@ export interface RegisterPayload {
   username: string;
 }
 
-export interface Post {
+export interface Post { 
   id: number;
   created_by: number; 
   category_id: number;
@@ -59,6 +59,8 @@ export interface PaginationMeta {
   total_items: number;
   total_pages: number;
   limit: number;
+  has_next_page: boolean;
+  has_prev_page: boolean;
 }
 
 export interface PaginatedResponse<T> {
