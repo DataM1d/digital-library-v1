@@ -1,71 +1,33 @@
 package handlers
 
 import (
-	"context"
-	"fmt"
-	"image"
-	_ "image/gif"
-	_ "image/jpeg"
-	_ "image/png"
-	"io"
 	"net/http"
 	"os"
 	"path/filepath"
 	"strconv"
-	"time"
 
 	"github.com/DataM1d/digital-library/internal/domain"
 	"github.com/DataM1d/digital-library/internal/models"
-	"github.com/bbrks/go-blurhash"
 	"github.com/gin-gonic/gin"
-	"github.com/google/uuid"
 )
 
 type PostHandler struct {
-	postService domain.PostService
+	postService  domain.PostService
+	imageService domain.ImageService
 }
 
-func NewPostHandler(s domain.PostService) *PostHandler {
-	return &PostHandler{postService: s}
+func NewPostHandler(ps domain.PostService, is domain.ImageService) *PostHandler {
+	return &PostHandler{
+		postService:  ps,
+		imageService: is,
+	}
 }
 
-func (h *PostHandler) saveUploadedFile(c *gin.Context) (string, string, error) {
-	file, header, err := c.Request.FormFile("image")
-	if err != nil {
-		return "", "", err
+func stringPtr(s string) *string {
+	if s == "" {
+		return nil
 	}
-	defer file.Close()
-
-	buff := make([]byte, 512)
-	_, _ = file.Read(buff)
-	_, _ = file.Seek(0, 0)
-	contentType := http.DetectContentType(buff)
-	allowedTypes := map[string]bool{"image/jpeg": true, "image/png": true, "image/webp": true}
-
-	if !allowedTypes[contentType] {
-		return "", "", fmt.Errorf("invalid image format: %s", contentType)
-	}
-
-	ext := filepath.Ext(header.Filename)
-	fileName := fmt.Sprintf("%d-%s%s", time.Now().Unix(), uuid.New().String(), ext)
-	uploadDir := "./uploads"
-	path := filepath.Join(uploadDir, fileName)
-
-	if err := os.MkdirAll(uploadDir, 0755); err != nil {
-		return "", "", err
-	}
-
-	dst, err := os.Create(path)
-	if err != nil {
-		return "", "", err
-	}
-	defer dst.Close()
-
-	if _, err := io.Copy(dst, file); err != nil {
-		return "", "", err
-	}
-
-	return "/uploads/" + fileName, path, nil
+	return &s
 }
 
 func (h *PostHandler) CreatePost(c *gin.Context) {
@@ -79,7 +41,7 @@ func (h *PostHandler) CreatePost(c *gin.Context) {
 		return
 	}
 
-	url, localPath, err := h.saveUploadedFile(c)
+	url, localPath, err := h.imageService.SaveUploadedFile(c)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
@@ -88,6 +50,12 @@ func (h *PostHandler) CreatePost(c *gin.Context) {
 	categoryID, _ := strconv.Atoi(c.PostForm("category_id"))
 	tagNames := c.PostFormArray("tags")
 
+	altText := c.PostForm("alt_text")
+	var altTextPtr *string
+	if altText != "" {
+		altTextPtr = &altText
+	}
+
 	post := models.Post{
 		Title:      c.PostForm("title"),
 		Content:    c.PostForm("content"),
@@ -95,7 +63,7 @@ func (h *PostHandler) CreatePost(c *gin.Context) {
 		ImageURL:   url,
 		BlurHash:   "processing",
 		Status:     c.DefaultPostForm("status", "published"),
-		AltText:    c.PostForm("alt_text"),
+		AltText:    altTextPtr,
 		CreatedBy:  userID,
 	}
 
@@ -105,7 +73,7 @@ func (h *PostHandler) CreatePost(c *gin.Context) {
 		return
 	}
 
-	go h.generateBlurHashInBackground(localPath, post.ID)
+	go h.postService.UpdateBlurHashAsync(localPath, post.ID)
 	c.JSON(http.StatusCreated, post)
 }
 
@@ -122,7 +90,13 @@ func (h *PostHandler) UpdatePost(c *gin.Context) {
 	}
 
 	categoryID, _ := strconv.Atoi(c.PostForm("category_id"))
-	tagNames := c.Request.MultipartForm.Value["tags"]
+	tagNames := c.PostFormArray("tags")
+
+	altText := c.PostForm("alt_text")
+	var altTextPtr *string
+	if altText != "" {
+		altTextPtr = &altText
+	}
 
 	post := models.Post{
 		ID:             existingPost.ID,
@@ -130,21 +104,20 @@ func (h *PostHandler) UpdatePost(c *gin.Context) {
 		Content:        c.PostForm("content"),
 		CategoryID:     categoryID,
 		Status:         c.PostForm("status"),
-		AltText:        c.PostForm("alt_text"),
+		AltText:        altTextPtr,
 		LastModifiedBy: userID,
 		ImageURL:       existingPost.ImageURL,
 		BlurHash:       existingPost.BlurHash,
 	}
 
 	if _, _, err := c.Request.FormFile("image"); err == nil {
-		url, localPath, saveErr := h.saveUploadedFile(c)
+		url, localPath, saveErr := h.imageService.SaveUploadedFile(c)
 		if saveErr == nil {
 			post.ImageURL = url
-			go h.generateBlurHashInBackground(localPath, post.ID)
+			go h.postService.UpdateBlurHashAsync(localPath, post.ID)
 
 			if existingPost.ImageURL != "" {
-				oldFilePath := filepath.Join(".", existingPost.ImageURL)
-				_ = os.Remove(oldFilePath)
+				_ = os.Remove(filepath.Join(".", existingPost.ImageURL))
 			}
 		}
 	}
@@ -174,10 +147,7 @@ func (h *PostHandler) GetPosts(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"data": posts,
-		"meta": meta,
-	})
+	c.JSON(http.StatusOK, gin.H{"data": posts, "meta": meta})
 }
 
 func (h *PostHandler) GetBySlug(c *gin.Context) {
@@ -198,28 +168,17 @@ func (h *PostHandler) DeletePost(c *gin.Context) {
 	param := c.Param("id")
 	userID := c.GetInt("user_id")
 
-	var existingPost *models.Post
-	id, err := strconv.Atoi(param)
+	post, err := h.postService.GetPostBySlug(ctx, param, userID)
 	if err != nil {
-		post, err := h.postService.GetPostBySlug(ctx, param, userID)
-		if err != nil {
-			c.JSON(http.StatusNotFound, gin.H{"error": "Post not found"})
-			return
-		}
-		id = post.ID
-		existingPost = post
-	} else {
-		post, err := h.postService.GetPostBySlug(ctx, param, userID)
-		if err == nil {
-			existingPost = post
-		}
+		c.JSON(http.StatusNotFound, gin.H{"error": "Post not found"})
+		return
 	}
 
-	if existingPost != nil && existingPost.ImageURL != "" {
-		_ = os.Remove(filepath.Join(".", existingPost.ImageURL))
+	if post.ImageURL != "" {
+		_ = os.Remove(filepath.Join(".", post.ImageURL))
 	}
 
-	if err := h.postService.DeletePost(ctx, id, role); err != nil {
+	if err := h.postService.DeletePost(ctx, post.ID, role); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
@@ -242,7 +201,6 @@ func (h *PostHandler) ToggleLike(c *gin.Context) {
 	if liked {
 		msg = "Post liked"
 	}
-
 	c.JSON(http.StatusOK, gin.H{"message": msg, "liked": liked})
 }
 
@@ -257,25 +215,4 @@ func (h *PostHandler) GetMyLikedPosts(c *gin.Context) {
 	c.JSON(http.StatusOK, posts)
 }
 
-func (h *PostHandler) generateBlurHashInBackground(filePath string, postID int) {
-	bgCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-	defer cancel()
 
-	file, err := os.Open(filePath)
-	if err != nil {
-		return
-	}
-	defer file.Close()
-
-	img, _, err := image.Decode(file)
-	if err != nil {
-		return
-	}
-
-	hash, err := blurhash.Encode(4, 3, img)
-	if err != nil {
-		return
-	}
-
-	_ = h.postService.UpdateBlurHash(bgCtx, postID, hash)
-}
