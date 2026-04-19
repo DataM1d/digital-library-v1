@@ -31,6 +31,7 @@ type PostService interface {
 	ToggleLike(ctx context.Context, userID, postID int) (bool, error)
 	GetLikedPosts(ctx context.Context, userID int) ([]models.Post, error)
 	UpdateBlurHash(ctx context.Context, postID int, hash string) error
+	UpdateBlurHashAsync(localPath string, postID int)
 }
 
 type TagRepo interface {

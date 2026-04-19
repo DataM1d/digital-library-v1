@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/DataM1d/digital-library/internal/models"
+	"github.com/gin-gonic/gin"
 )
 
 type SlugRepo interface {
@@ -15,6 +16,7 @@ type SlugService interface {
 }
 
 type ImageService interface {
+	SaveUploadedFile(c *gin.Context) (string, string, error)
 	GenerateBlurHash(imageURL string) (string, error)
 	CleanupOrphanedFiles(ctx context.Context, allActiveURLs []string) (int, error)
 }
