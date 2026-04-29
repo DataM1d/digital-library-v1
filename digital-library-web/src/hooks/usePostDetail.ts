@@ -1,72 +1,67 @@
+"use client";
+
 import { useState, useEffect } from "react";
 import { api } from "@/lib/api";
 import { Post } from "@/types";
-import { toast } from "sonner";
 import { isAxiosError } from "axios";
 
 export function usePostDetail(slug: string) {
   const [post, setPost] = useState<Post | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [likesCount, setLikesCount] = useState(0);
-  const [isLiked, setIsLiked] = useState(false);
 
   useEffect(() => {
     let isMounted = true;
 
-    async function fetchPost() {
+    async function fetchArtifact() {
       if (!slug) return;
-
       try {
         setLoading(true);
-        const data = await api.posts.slug(slug);
+        // api.posts.slug returns { data: Post }
+        const response = await api.posts.slug(slug);
         
         if (isMounted) {
-          setPost(data);
-          setLikesCount(data.like_count);
-          setIsLiked(!!data.user_has_liked);
+          setPost(response.data);
           setError(null);
         }
       } catch (err: unknown) {
         if (isMounted) {
           const msg = isAxiosError(err) 
-            ? err.response?.data?.error || "Archive not found" 
-            : "System failure";
+            ? err.response?.data?.error || "Archive_Access_Denied" 
+            : "System_Link_Failure";
           setError(msg);
-          console.error("[Post Detail Fetch Error]:", err);
         }
       } finally {
-        if (isMounted) {
-          setLoading(false);
-        }
+        if (isMounted) setLoading(false);
       }
     }
-    fetchPost();
+
+    fetchArtifact();
     return () => { isMounted = false; };
   }, [slug]);
 
   const toggleLike = async () => {
-    if (!post || !post.id) return;
+    if (!post) return;
 
-    const prevCount = likesCount;
-    const prevStatus = isLiked;
-
-    setLikesCount(prev => isLiked ? prev - 1 : prev + 1);
-    setIsLiked(!isLiked);
+    // Optimistic Update
+    setPost(prev => prev ? {
+      ...prev,
+      user_has_liked: !prev.user_has_liked,
+      like_count: prev.user_has_liked ? prev.like_count - 1 : prev.like_count + 1
+    } : null);
 
     try {
       await api.posts.like(post.id);
-    } catch (err: unknown) {
-        setLikesCount(prevCount);
-        setIsLiked(prevStatus);
-        let errorMsg = "Feedback synchronization failed";
-          if (isAxiosError(err) && err.response?.status === 401) {
-            errorMsg = "Authentication required to like artifacts";
-          }
-        toast.error(errorMsg);
-        console.error("[Like Error]:", err);
+    } catch (err) {
+      // Rollback on failure
+      setPost(prev => prev ? {
+        ...prev,
+        user_has_liked: !prev.user_has_liked,
+        like_count: prev.user_has_liked ? prev.like_count + 1 : prev.like_count - 1
+      } : null);
+      console.error("[Feedback_Sync_Error]:", err);
     }
   };
 
-  return { post, loading, error, likesCount, isLiked, toggleLike };
+  return { post, loading, error, toggleLike };
 }

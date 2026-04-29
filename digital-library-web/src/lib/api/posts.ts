@@ -1,7 +1,6 @@
 import { request, apiInstance } from "./client";
 import { z } from "zod";
 import { PostSchema, PaginatedPostSchema, CategorySchema } from "./schemas";
-import { Post } from "@/types";
 
 export const postsApi = {
   list: (params: { search?: string; category?: string; page?: number; limit?: number } = {}) => 
@@ -11,11 +10,11 @@ export const postsApi = {
     }, PaginatedPostSchema),
 
   slug: (slug: string) => 
-    request<Post>({ 
+    request({ 
       url: `posts/s/${slug}` 
-    }, PostSchema),
+    }, z.object({ data: PostSchema })),
 
-  like: (id: number) =>
+  like: (id: number | string) =>
     request<{ message: string }>({
       method: "POST",
       url: `user/posts/id/${id}/like`,
@@ -35,15 +34,17 @@ export const postsApi = {
         }
       },
     });
-    return PostSchema.parse(response.data);
+    // Check if backend wraps response in { data: ... }
+    const responseData = response.data.data ? response.data.data : response.data;
+    return PostSchema.parse(responseData);
   },
 
   update: (slug: string, formData: FormData) => 
-    request<Post>({
+    request({
       method: "PUT",
       url: `admin/posts/${slug}`,
       data: formData
-    }, PostSchema),
+    }, z.object({ data: PostSchema })),
 
   delete: (id: number | string) => 
     request({ 

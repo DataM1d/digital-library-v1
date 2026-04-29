@@ -18,28 +18,26 @@ export interface RegisterPayload {
   username: string;
 }
 
-export interface Post { 
-  id: number;
-  created_by: number; 
-  category_id: number;
-  last_modified_by: number;
+export interface Post {
+  id: string; 
+  created_by: string;
+  category_id: string;
+  last_modified_by: string;
   like_count: number;
+  user_has_liked: boolean;
   title: string;
   content: string;
   image_url: string;
-  blur_hash?: string;
-  alt_text: string;
+  blur_hash: string;
   slug: string;
-  status: 'published' | 'draft';
-  category_name: string; 
+  status: string;
+  alt_text: string;
+  category_name: string;
   tags: string[];
   created_at: string;
   updated_at: string;
-  user_has_liked?: boolean;
-  meta_description?: string | null;
-  og_image?: string | null;
-  comments?: PostComment[];
-  comment_count?: number;
+  meta_description?: string;
+  og_image?: string;
 }
 
 export interface PostComment {
