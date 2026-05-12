@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { LoginCredentials, RegisterPayload } from "@/types";
-import { isAxiosError } from "axios"; 
+import { isAxiosError } from "axios";
 
 type AuthMode = "login" | "register";
 
@@ -11,7 +11,7 @@ export function useAuthForm(mode: AuthMode) {
   const { login, register } = useAuth();
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  
+
   const [formData, setFormData] = useState({
     username: "",
     email: "",
@@ -33,13 +33,13 @@ export function useAuthForm(mode: AuthMode) {
         const payload: RegisterPayload = {
           username: formData.username,
           email: formData.email,
-          password: formData.password
+          password: formData.password,
         };
         await register(payload);
       } else {
-        const credentials: LoginCredentials = { 
-          email: formData.email, 
-          password: formData.password 
+        const credentials: LoginCredentials = {
+          email: formData.email,
+          password: formData.password,
         };
         await login(credentials);
       }
@@ -57,11 +57,11 @@ export function useAuthForm(mode: AuthMode) {
     }
   };
 
-  return { 
-    formData, 
-    handleChange, 
-    handleSubmit, 
-    isLoading, 
-    error 
+  return {
+    formData,
+    handleChange,
+    handleSubmit,
+    isLoading,
+    error,
   };
 }

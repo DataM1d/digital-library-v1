@@ -4,14 +4,13 @@ import { PostComment } from "@/types";
 import { isAxiosError } from "axios";
 import { toast } from "sonner";
 
-export function useComments(postId: number) {
+export function useComments(postId: string) {
   const [comments, setComments] = useState<PostComment[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const fetchComments = useCallback(async () => {
-    if (!postId || isNaN(Number(postId)) || Number(postId) <= 0) {
-      console.warn("[Comments] Skipping fetch: Invalid postId", postId);
+    if (!postId) {
       setIsLoading(false);
       return;
     }
@@ -21,7 +20,9 @@ export function useComments(postId: number) {
       setComments(data);
     } catch (err: unknown) {
       if (isAxiosError(err) && err.response?.status === 429) {
-        console.error(`[Comment Fetch Error]: ${err.response?.status} - ${err.message}`);
+        console.error(
+          `[Comment Fetch Error]: ${err.response?.status} - ${err.message}`,
+        );
         toast.error("Archive is busy: Rate limit exceeded");
       } else {
         console.error("[Unexpected Comment Error]:", err);
@@ -35,8 +36,8 @@ export function useComments(postId: number) {
     fetchComments();
   }, [fetchComments]);
 
-  const addComment = async (content: string, parentId?: number | null) => {
-    if (!content.trim())return;
+  const addComment = async (content: string, parentId?: string | null) => {
+    if (!content.trim()) return;
 
     setIsSubmitting(true);
     try {
@@ -45,7 +46,7 @@ export function useComments(postId: number) {
       await fetchComments();
     } catch (err: unknown) {
       let errorMessage = "Failed to commit comment to archive";
-      
+
       if (isAxiosError(err)) {
         errorMessage = err.response?.data?.error || errorMessage;
       }
@@ -53,7 +54,7 @@ export function useComments(postId: number) {
       toast.error(errorMessage);
       throw err;
     } finally {
-        setIsSubmitting(false);
+      setIsSubmitting(false);
     }
   };
 
@@ -62,6 +63,6 @@ export function useComments(postId: number) {
     isLoading,
     isSubmitting,
     addComment,
-    refresh:fetchComments
-    };
- }
+    refresh: fetchComments,
+  };
+}

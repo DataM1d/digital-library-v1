@@ -1,102 +1,139 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
-import { useRouter } from "next/navigation";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { toast } from "sonner";
 import { isAxiosError } from "axios";
 import { User, LoginCredentials, RegisterPayload, AuthResponse } from "@/types";
 import { api, UserSchema } from "@/lib/api";
+import { useAppRouter } from "@/lib/router";
 
 export function useAuthInternal() {
   const [user, setUser] = useState<User | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [mounted, setMounted] = useState(false);
-  const router = useRouter();
+  const [initializing, setInitializing] = useState(true);
 
- useEffect(() => {
+  const router = useAppRouter();
+
+  useEffect(() => {
     const initAuth = () => {
       try {
         const token = localStorage.getItem("token");
         const savedUser = localStorage.getItem("user");
 
-        if (token && savedUser) {
-          const parsedUser = JSON.parse(savedUser);
-          const result = UserSchema.safeParse(parsedUser);
-
-          if (result.success) {
-            setUser(result.data);
-          } else {
-            console.warn("Archive authentication schema mismatch. Resetting session.");
-            localStorage.removeItem("token");
-            localStorage.removeItem("user");
-          }
+        if (!token || !savedUser) {
+          setInitializing(false);
+          return;
         }
-      } catch (error) {
-        console.error("Archive authentication corrupted:", error);
-        localStorage.clear();
+
+        const parsedUser = JSON.parse(savedUser);
+        const result = UserSchema.safeParse(parsedUser);
+
+        if (!result.success) {
+          localStorage.removeItem("token");
+          localStorage.removeItem("user");
+          setInitializing(false);
+          return;
+        }
+
+        setUser({
+          ...result.data,
+        });
+      } catch {
+        localStorage.removeItem("token");
+        localStorage.removeItem("user");
       } finally {
-        setLoading(false);
-        setMounted(true);
+        setInitializing(false);
       }
     };
+
+    const handleStorage = () => {
+      const token = localStorage.getItem("token");
+      const savedUser = localStorage.getItem("user");
+
+      if (!token || !savedUser) {
+        setUser(null);
+      }
+    };
+
     initAuth();
+
+    window.addEventListener("storage", handleStorage);
+
+    return () => {
+      window.removeEventListener("storage", handleStorage);
+    };
   }, []);
 
-  const handleAuthSuccess = useCallback((res: AuthResponse) => {
-    localStorage.setItem("token", res.token);
-    localStorage.setItem("user", JSON.stringify(res.user));
+  const handleAuthSuccess = useCallback(
+    async (res: AuthResponse) => {
+      localStorage.setItem("token", res.token);
+      localStorage.setItem("user", JSON.stringify(res.user));
 
-    setUser(res.user);
-    toast.success(`Access granted: Welcome, ${res.user.username}`);
-    
-    const params = new URLSearchParams(window.location.search);
-    const redirectTo = params.get("redirect") || "/";
+      setUser(res.user);
 
-    router.push(redirectTo);
-    router.refresh();
-  }, [router]);
+      toast.success(`Access granted: Welcome, ${res.user.username}`);
 
-  const login = async (credentials: LoginCredentials) => {
-    try {
-      const res = await api.auth.login(credentials);
-      await handleAuthSuccess(res);
-    } catch (err) {
-      if (isAxiosError(err)) {
-        toast.error(err.response?.data?.error || "Invalid credentials");
+      const params = new URLSearchParams(window.location.search);
+      const redirectTo = params.get("redirect") || "/";
+
+      router.push(redirectTo);
+      router.refresh();
+    },
+    [router],
+  );
+
+  const login = useCallback(
+    async (credentials: LoginCredentials) => {
+      try {
+        const res = await api.auth.login(credentials);
+        await handleAuthSuccess(res);
+      } catch (err) {
+        if (isAxiosError(err)) {
+          toast.error(err.response?.data?.error || "Invalid credentials");
+        }
+
+        throw err;
       }
-      throw err;
-    }
-  };
+    },
+    [handleAuthSuccess],
+  );
 
-  const register = async (payload: RegisterPayload) => {
-    try {
-      const res = await api.auth.register(payload);
-      await handleAuthSuccess(res);
-    } catch (err) {
-      if (isAxiosError(err)) {
-        toast.error(err.response?.data?.error || "Registration failed");
+  const register = useCallback(
+    async (payload: RegisterPayload) => {
+      try {
+        const res = await api.auth.register(payload);
+        await handleAuthSuccess(res);
+      } catch (err) {
+        if (isAxiosError(err)) {
+          toast.error(err.response?.data?.error || "Registration failed");
+        }
+
+        throw err;
       }
-      throw err;
-    }
-  };
+    },
+    [handleAuthSuccess],
+  );
 
   const logout = useCallback(() => {
     localStorage.removeItem("token");
     localStorage.removeItem("user");
+
     setUser(null);
 
     toast.info("Session archived. You have been logged out.");
+
     router.push("/login");
     router.refresh();
   }, [router]);
 
-  return {
-    user,
-    loading,
-    mounted,
-    login,
-    register,
-    logout,
-    isAuthenticated: !!user
-  };
+  return useMemo(
+    () => ({
+      user,
+      loading: initializing,
+      login,
+      register,
+      logout,
+      isAuthenticated: !!user,
+    }),
+    [user, initializing, login, register, logout],
+  );
 }
