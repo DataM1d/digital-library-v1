@@ -5,11 +5,11 @@ export const UserSchema = z.object({
   username: z.string().min(1),
   email: z.preprocess(
     (val) => (typeof val === "string" ? val.toLowerCase().trim() : val),
-    z.string().email().catch("no-email@archive.com")
+    z.string().email().catch("no-email@archive.com"),
   ),
   role: z.preprocess(
     (val) => (typeof val === "string" ? val.toLowerCase() : val),
-    z.enum(["user", "admin"]).catch("user")
+    z.enum(["user", "admin"]).catch("user"),
   ),
   created_at: z.string().nullable().optional(),
   updated_at: z.string().nullable().optional(),
@@ -24,9 +24,13 @@ export const CategorySchema = z.object({
 
 export const PostSchema = z.object({
   // Use .catch to ensure a unique key even if the backend fails us
-  id: z.coerce.string().catch(() => `temp-id-${Math.random().toString(36).slice(2, 9)}`),
-  slug: z.string().catch(() => `missing-slug-${Math.random().toString(36).slice(2, 9)}`),
-  
+  id: z.coerce
+    .string()
+    .catch(() => `temp-id-${Math.random().toString(36).slice(2, 9)}`),
+  slug: z
+    .string()
+    .catch(() => `missing-slug-${Math.random().toString(36).slice(2, 9)}`),
+
   // The rest remains the same as our previous "Invincible" version
   created_by: z.coerce.string().catch("0"),
   category_id: z.coerce.string().catch("0"),
@@ -50,40 +54,49 @@ export const PostFormSchema = z.object({
   content: z.string().min(20, "Content must be more descriptive"),
   category_id: z.string().min(1, "Taxonomy classification is required"),
   status: z.enum(["published", "draft"]),
-  tags: z.array(z.string()), 
+  tags: z.array(z.string()),
   alt_text: z.string().optional(),
 });
 
 export type PostFormData = z.infer<typeof PostFormSchema>;
 
 export const PaginatedPostSchema = z.object({
-  data: z.array(PostSchema).nullable().transform((val) => val ?? []),
-  meta: z.object({
-    current_page: z.number().default(1),
-    limit: z.number().default(10),
-    total_items: z.number().default(0), 
-    total_pages: z.number().default(1),
-  }).catch({
-    current_page: 1,
-    limit: 10,
-    total_items: 0,
-    total_pages: 1
-  }),
+  data: z
+    .array(PostSchema)
+    .nullable()
+    .transform((val) => val ?? []),
+  meta: z
+    .object({
+      current_page: z.number().default(1),
+      limit: z.number().default(10),
+      total_items: z.number().default(0),
+      total_pages: z.number().default(1),
+      has_next_page: z.boolean().default(false),
+      has_prev_page: z.boolean().default(false),
+    })
+    .catch({
+      current_page: 1,
+      limit: 10,
+      total_items: 0,
+      total_pages: 1,
+      has_next_page: false,
+      has_prev_page: false,
+    }),
 });
 
 export const AuthResponseSchema = z.object({
-    token: z.string(),
-    user: UserSchema,
+  token: z.string(),
+  user: UserSchema,
 });
 
 export const LoginSchema = z.object({
   email: z.string().email("Invalid email"),
-  password: z.string().min(6, "Min 6 chars")
+  password: z.string().min(6, "Min 6 chars"),
 });
 
 export const UserResponseSchema = z.object({
   id: z.coerce.string(),
   username: z.string(),
   email: z.string().email(),
-  role: z.string().default("user")
+  role: z.string().default("user"),
 });

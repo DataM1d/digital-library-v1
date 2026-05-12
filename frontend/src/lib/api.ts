@@ -7,8 +7,8 @@ export const api = {
   posts: postsApi,
   auth: authApi,
   admin: adminApi,
-  comments: commentApi
-}
+  comments: commentApi,
+};
 
 export const getPosts = postsApi.list;
 export const getCategories = postsApi.categories;

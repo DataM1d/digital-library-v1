@@ -1,8 +1,8 @@
 export interface User {
-  id: number;
+  id: string;
   username: string;
   email: string;
-  role: 'user' | 'admin' | string;
+  role: "user" | "admin" | string;
   created_at?: string | null;
   updated_at?: string | null;
 }
@@ -19,7 +19,7 @@ export interface RegisterPayload {
 }
 
 export interface Post {
-  id: string; 
+  id: string;
   created_by: string;
   category_id: string;
   last_modified_by: string;
@@ -72,12 +72,12 @@ export interface FileUploadResponse {
   blur_hash?: string;
 }
 export interface AuthResponse {
-  token: string;  
+  token: string;
   user: User;
 }
 
 export interface Category {
-  id: number;
+  id: string;
   name: string;
   slug: string;
   description?: string;
@@ -100,4 +100,3 @@ export interface AuthContextType {
   logout: () => void;
   isAuthenticated: boolean;
 }
-
