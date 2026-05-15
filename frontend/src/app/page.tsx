@@ -1,14 +1,12 @@
-import { Hero } from "@/components/registry/hero";
-import { LibraryGrid } from "@/components/registry/LibraryGrid";
+import { MainShell } from "@/components/layout/MainShell";
+import { ArchiveHeader } from "@/components/typography/ArchiveHeader";
+import { ArtifactFeed } from "@/components/features/feed/ArtifactFeed";
 
 export default function HomePage() {
   return (
-    <div className="flex flex-col w-full min-h-screen">
-      <Hero />
-
-      <section className="p-8 lg:p-12">
-        <LibraryGrid />
-      </section>
-    </div>
+    <MainShell>
+      <ArchiveHeader />
+      <ArtifactFeed />
+    </MainShell>
   );
 }

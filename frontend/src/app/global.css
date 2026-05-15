@@ -2,67 +2,96 @@
 
 @layer base {
   :root {
-    --background: 244 244 244;
-    --foreground: 26 26 26;
-    --surface-1: 255 255 255;
-    --surface-2: 244 244 245;
-    --primary-accent: 0 0 0;
-    --border: 228 228 231;
-    --radius: 0px;
-    --font-sans: "Inter", -apple-system, BlinkMacSystemFont, sans-serif;
+    /* 1. Archive Palette - Base HSL */
+    /* Warm Stone Background */
+    --background-hsl: 40 5% 98%;
+    --background: hsl(var(--background-hsl));
+
+    /* Deep Ink Foreground */
+    --foreground-hsl: 240 6% 10%;
+    --foreground: hsl(var(--foreground-hsl));
+
+    /* Paper Surfaces */
+    --surface-hsl: 0 0% 100%;
+    --surface: hsl(var(--surface-hsl));
+    --surface-muted: hsl(60 4% 92%);
+
+    /* 2. Text Tones */
+    --text-primary: hsl(0, 0%, 75%);
+    --text-muted: hsl(240, 5%, 45%);
+    --text-soft: hsl(240 5% 70%);
+    --text-accent: hsl(234 89% 64%);
+
+    /* 3. Borders (The 'Grid' visibility fix) */
+    --border: hsl(240 6% 88%);
+    --border-strong: hsl(240 6% 82%);
+
+    /* Geometry */
+    --radius-xs: 1px;
+    --radius-sm: 2px;
+    --radius-md: 4px;
+
+    /* Shadows */
+    --shadow-soft: 0 2px 12px -2px rgba(0, 0, 0, 0.04);
+
+    /* Typography */
+    --font-sans: "Inter", -apple-system, sans-serif;
     --font-mono: "JetBrains Mono", monospace;
+    --font-serif: "Newsreader", "Playfair Display", serif;
+
+    --ease-out-expo: cubic-bezier(0.19, 1, 0.22, 1);
   }
 
   * {
-    border-color: rgb(var(--border));
+    border-color: var(--border);
     -webkit-font-smoothing: antialiased;
-    -moz-osx-font-smoothing: grayscale;
   }
 
   *::selection {
-    background-color: black;
-    color: white;
+    background-color: var(--foreground);
+    color: var(--surface);
   }
 
   body {
-    background-color: rgb(var(--background));
-    color: rgb(var(--foreground));
+    background-color: var(--background);
+    color: var(--text-primary);
     font-family: var(--font-sans);
     letter-spacing: -0.01em;
     overflow-x: hidden;
   }
 
   h1 {
-    font-size: clamp(48px, 8vw, 80px);
-    font-weight: 500;
-    line-height: 0.9;
-    tracking: -0.03em;
-    color: black;
-    text-transform: uppercase;
+    font-family: var(--font-serif);
+    font-style: italic;
+    font-size: clamp(48px, 8vw, 92px);
+    font-weight: 300;
+    line-height: 0.95;
+    letter-spacing: -0.04em;
+    color: var(--text-primary);
   }
 
   h2 {
-    font-size: 18px;
-    font-weight: 500;
-    letter-spacing: -0.01em;
-    color: black;
-    text-transform: uppercase;
+    font-family: var(--font-serif);
+    font-style: italic;
+    font-size: 28px;
+    font-weight: 400;
+    letter-spacing: -0.02em;
+    color: var(--text-primary);
   }
 
   p {
-    font-size: 15px;
-    line-height: 1.625;
-    color: #52525b; /* zinc-600 */
+    font-size: 16px;
+    line-height: 1.6;
+    color: var(--text-muted);
   }
 
-  small,
-  .mono-label {
+  .meta {
     font-family: var(--font-mono);
     font-size: 10px;
     font-weight: 700;
-    text-transform: uppercase;
     letter-spacing: 0.2em;
-    color: #71717a; /* zinc-500 */
+    text-transform: uppercase;
+    color: var(--text-soft);
   }
 
   ::-webkit-scrollbar {
@@ -70,138 +99,61 @@
   }
 
   ::-webkit-scrollbar-track {
-    background: rgb(var(--background));
+    background: var(--background);
   }
 
   ::-webkit-scrollbar-thumb {
-    background: #d4d4d8;
-    border-radius: 0px;
+    background: var(--border-strong);
   }
 }
 
 @layer utilities {
-  .system-grid {
-    background-image: linear-gradient(
-        to right,
-        rgba(0, 0, 0, 0.05) 1px,
-        transparent 1px
-      ),
-      linear-gradient(to bottom, rgba(0, 0, 0, 0.05) 1px, transparent 1px);
-    background-size: 24px 24px;
+  /* This ensures the cards stand out against the Stone background */
+  .surface-artifact {
+    background-color: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-xs);
+    box-shadow: var(--shadow-soft);
+    transition: all 0.6s var(--ease-out-expo);
   }
 
-  .brutalist-border {
-    border: 1px solid #18181b; /* zinc-900 */
+  .surface-artifact:hover {
+    border-color: var(--border-strong);
+    transform: translateY(-2px);
+    box-shadow: 0 12px 30px -10px rgba(0, 0, 0, 0.08);
   }
 
-  .industrial-card {
-    border: 1px solid #e4e4e7; /* zinc-200 */
-    background-color: white;
-    transition: all 300ms cubic-bezier(0.4, 0, 0.2, 1);
+  .section-container {
+    max-width: 1800px;
+    margin: 0 auto;
+    padding: 0 4rem;
   }
 
-  .industrial-card:hover {
-    border-color: #09090b; /* zinc-950 */
+  .divider-subtle {
+    height: 1px;
+    width: 100%;
+    background: linear-gradient(to right, var(--border), transparent);
   }
 
-  .archive-stack {
-    display: flex;
-    flex-direction: column;
-    gap: 0;
-    border-left: 1px solid #18181b;
-    border-right: 1px solid #18181b;
-    border-bottom: 1px solid #18181b;
-  }
-
-  .archive-stack:first-child {
-    border-top: 1px solid #18181b;
-  }
-
-  .meta-header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    border-bottom: 1px solid #18181b;
-    background-color: rgba(244, 244, 245, 0.5); /* zinc-100/50 */
-    padding: 8px 12px;
-  }
-
-  .archive-masonry {
+  .archive-grid {
     column-count: 1;
-    column-gap: 0;
+    column-gap: 3rem; /* Increased gap for breathing room */
   }
 
   @media (min-width: 768px) {
-    .archive-masonry {
+    .archive-grid {
       column-count: 2;
     }
   }
 
-  @media (min-width: 1024px) {
-    .archive-masonry {
+  @media (min-width: 1440px) {
+    .archive-grid {
       column-count: 3;
     }
   }
 
-  .masonry-item {
+  .archive-item {
     break-inside: avoid;
-    padding: 8px;
-  }
-
-  .data-field {
-    display: flex;
-    align-items: center;
-    gap: 4px;
-    font-family: var(--font-mono);
-    font-size: 9px;
-    color: #a1a1aa; /* zinc-400 */
-  }
-
-  .status-dot {
-    height: 6px;
-    width: 6px;
-    border-radius: 0px;
-  }
-
-  .status-active {
-    background-color: #10b981; /* emerald-500 */
-    box-shadow: 0 0 8px rgba(16, 185, 129, 0.4);
-  }
-
-  .status-draft {
-    background-color: #f59e0b; /* amber-500 */
-  }
-
-  .hairline-border {
-    border: 0.5px solid #1a1a1a;
-  }
-
-  .text-justify-technical {
-    text-align: justify;
-    hyphens: auto;
-  }
-
-  .inverted-box {
-    background-color: black;
-    color: white;
-    padding: 4px 8px;
-    font-family: var(--font-mono);
-    font-size: 10px;
-    text-transform: uppercase;
-    letter-spacing: 0.1em;
-  }
-
-  .loading-bar {
-    position: fixed;
-    left: 0;
-    top: 0;
-    z-index: 9999;
-    height: 2px;
-    background-color: black;
-    transition: all 500ms;
-  }
-
-  .hard-shadow {
-    box-shadow: 4px 4px 0px 0px rgba(0, 0, 0, 0.1);
+    margin-bottom: 3rem;
   }
 }

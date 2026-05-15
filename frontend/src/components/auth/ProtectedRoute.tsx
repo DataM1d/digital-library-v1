@@ -2,7 +2,7 @@
 
 import { useAuth } from "@/hooks/useAuth";
 import { useRouter, usePathname } from "next/navigation";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { Loader2 } from "lucide-react";
 
 interface ProtectedRouteProps {
@@ -11,17 +11,19 @@ interface ProtectedRouteProps {
 
 export function ProtectedRoute({ children }: ProtectedRouteProps) {
   const { isAuthenticated, loading } = useAuth();
+  const [isMounted, setIsMounted] = useState(false);
   const router = useRouter();
   const pathname = usePathname();
 
   useEffect(() => {
+    setIsMounted(true);
     if (!loading && !isAuthenticated) {
       const returnUrl = encodeURIComponent(pathname);
       router.push(`/login?redirect=${returnUrl}`);
     }
-  }, [isAuthenticated, loading, router, pathname]);
+  }, [isAuthenticated, loading, router, pathname, isMounted]);
 
-  if (loading) {
+  if (!isMounted || loading) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-white dark:bg-zinc-950">
         <div className="flex flex-col items-center gap-4">

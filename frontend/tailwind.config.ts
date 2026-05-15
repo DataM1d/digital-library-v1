@@ -9,6 +9,14 @@ const config: Config = {
   ],
   theme: {
     extend: {
+      borderRadius: {
+        "3xl": "1.5rem",
+        "4xl": "2rem",
+      },
+      boxShadow: {
+        premium: "0 8px 30px rgba(0,0,0,0.04), 0 20px 80px rgba(0,0,0,0.03)",
+        glass: "inset 0 0 0 1px rgba(255,255,255,0.4)",
+      },
     },
   },
   plugins: [],

@@ -94,7 +94,7 @@ export interface CategoryPayload {
 export interface AuthContextType {
   user: User | null;
   loading: boolean;
-  mounted: boolean;
+  isAdmin: boolean;
   login: (credentials: LoginCredentials) => Promise<void>;
   register: (payload: RegisterPayload) => Promise<void>;
   logout: () => void;
