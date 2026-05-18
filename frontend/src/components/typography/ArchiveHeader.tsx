@@ -1,28 +1,24 @@
+import React from "react";
+import { HeaderCanvas } from "./HeaderCanvas";
+
 export function ArchiveHeader() {
   return (
-    <header className="mb-32 pt-48 px-8 lg:px-16 w-full">
-      <div className="max-w-[1400px] mx-auto">
-        {/* Adjusted size to 80px max so it stays elegant and not "massive" */}
-        <h1 className="text-[clamp(48px,6vw,80px)] leading-[1.1] tracking-[-0.03em] font-serif font-light">
-          {/* Line 1: Anchored Left */}
-          <span className="block text-[hsl(var(--text-soft))] opacity-30 italic">
+    <HeaderCanvas>
+      <header className="w-full pl-6 sm:pl-[20%] md:pl-[40%] lg:pl-[64%] transition-all duration-300">
+        <h1 className="font-serif text-3xl sm:text-4xl md:text-5xl font-light tracking-tight leading-tight drop-shadow-xl select-none">
+          <span className="block text-[var(--text-dim)] tracking-wide">
             A collection of
           </span>
 
-          {/* Line 2: Indented/Staggered to the middle */}
-          <span className="block text-[hsl(var(--surface))] drop-shadow-sm py-2 pl-[15%] lg:pl-[25%]">
+          <span className="block italic text-(--text-bright) pl-[10%] md:pl-[20%] py-1 font-(--font-mono) tracking-wide">
             digital artifacts
           </span>
 
-          {/* Line 3: Anchored Left again */}
-          <span className="block italic text-[hsl(var(--text-primary))] opacity-80">
+          <span className="block text-[var(--text-dim)] tracking-wide">
             & fragments.
           </span>
         </h1>
-
-        {/* The 15% opacity divider line */}
-        <div className="mt-32 w-full h-[1px] bg-[hsl(var(--surface))] opacity-[0.85]" />
-      </div>
-    </header>
+      </header>
+    </HeaderCanvas>
   );
 }
