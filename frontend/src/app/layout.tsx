@@ -1,10 +1,11 @@
-// app/layout.tsx
-import { Sidebar } from "@/components/navigation/sidebar";
 import QueryProvider from "@/components/providers/QueryProvider";
 import { AuthProvider } from "@/context/AuthContext";
-
-//@ts-ignore
+import { Inter, JetBrains_Mono, Newsreader } from "next/font/google";
 import "./global.css";
+
+const inter = Inter({ subsets: ["latin"], variable: "--font-sans" });
+const mono = JetBrains_Mono({ subsets: ["latin"], variable: "--font-mono" });
+const serif = Newsreader({ subsets: ["latin"], variable: "--font-serif" });
 
 export default function RootLayout({
   children,
@@ -13,13 +14,12 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
-      <body className="bg-[#050505] antialiased">
+      <body
+        className={`${inter.variable} ${mono.variable} ${serif.variable} bg-[#08080a] text-[#f8f9fa] antialiased min-h-screen`}
+      >
         <QueryProvider>
           <AuthProvider>
-            <div className="flex">
-              <Sidebar />
-              <main className="flex-1 ml-64 min-h-screen">{children}</main>
-            </div>
+            <main className="w-full min-h-screen">{children}</main>
           </AuthProvider>
         </QueryProvider>
       </body>
