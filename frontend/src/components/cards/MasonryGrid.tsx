@@ -50,9 +50,9 @@ export function MasonryGrid({ items }: MasonryGridProps) {
   });
 
   return (
-    <div className="flex w-full gap-4 px-2 transition-all duration-300">
+    <div className="flex w-full gap-6 px-0 transition-all duration-300">
       {columns.map((col, colIndex) => (
-        <div key={colIndex} className="flex-1 flex flex-col gap-4">
+        <div key={colIndex} className="flex-1 flex flex-col gap-6">
           {col.items.map((artifact) => (
             <ArtifactCard key={artifact.id} artifact={artifact} />
           ))}

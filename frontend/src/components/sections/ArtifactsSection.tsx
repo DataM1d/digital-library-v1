@@ -20,14 +20,15 @@ export function ArtifactsSection() {
   }, [searchQuery]);
 
   return (
-    <div className="w-full px-2 mt-14 relative z-30 flex flex-col gap-6">
+    <div className="w-full px-6 md:px-12 mt-16 relative z-30 flex flex-col gap-8">
+      {/* FilterBar inner paddings are removed so it flushes edge-to-edge here */}
       <FilterBar searchQuery={searchQuery} onSearchChange={setSearchQuery} />
 
       <div className="w-full pb-24">
         {filteredArtifacts.length > 0 ? (
           <MasonryGrid items={filteredArtifacts} />
         ) : (
-          <div className="w-full py-20 flex justify-center items-center border border-dashed border-zinc-900/60 rounded-lg">
+          <div className="w-full py-24 flex justify-center items-center border border-dashed border-zinc-900/60 rounded-xl">
             <span className="font-mono text-[11px] tracking-widest text-zinc-500 uppercase">
               // ERROR: NO MATCHING RUNTIME RECORDS FOUND
             </span>

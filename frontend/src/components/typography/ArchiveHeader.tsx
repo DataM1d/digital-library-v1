@@ -10,7 +10,7 @@ export function ArchiveHeader() {
             A collection of
           </span>
 
-          <span className="block italic text-(--text-bright) pl-[10%] md:pl-[20%] py-1 font-(--font-mono) tracking-wide">
+          <span className="block italic text-[var(--text-bright)] pl-[10%] md:pl-[20%] py-2 font-mono tracking-wide">
             digital artifacts
           </span>
 
