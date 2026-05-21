@@ -27,7 +27,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
       <div className="relative z-10 flex w-full">
         <SystemSidebar />
 
-        <main className="flex-1 min-h-screen overflow-y-auto pl-32 pr-8 py-10 md:pr-12 backdrop-blur-[1px] transition-all duration-700 ease-[cubic-bezier(0.19,1,0.22,1)]">
+        <main className="flex-1 min-h-screen overflow-y-auto pl-64 pr-8 pb-10 md:pr-12 backdrop-blur-[1px] transition-all duration-700 ease-[cubic-bezier(0.19,1,0.22,1)]">
           {children}
         </main>
       </div>
