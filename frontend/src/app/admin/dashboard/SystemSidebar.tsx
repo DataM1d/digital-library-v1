@@ -24,15 +24,18 @@ export function SystemSidebar() {
   }, []);
 
   return (
-    <aside className="fixed left-0 top-0 bottom-0 w-64 backdrop-blur-sm z-50 p-6 flex flex-col justify-between border-r border-zinc-800/40 select-none">
-      <div className="flex flex-col gap-8 w-full">
-        <div className="flex flex-col items-center w-full py-2">
-          <div className="w-12 h-12 border border-zinc-700/60 bg-zinc-900/30 text-zinc-100 rounded-full flex items-center justify-center font-mono font-bold text-base leading-none shadow-[0_0_16px_rgba(0,0,0,0.2)] flex-shrink-0">
+    <aside className="fixed left-0 top-0 bottom-0 w-64 backdrop-blur-xl z-50 pb-6 pl-4 pr-6 flex flex-col justify-between border-r border-zinc-800/40 select-none pt-0">
+      <div className="flex flex-col w-full">
+        {/* Top section height calibrated to align perfectly with the Registry Header line */}
+        <div className="flex items-center justify-center w-full h-[80px] flex-shrink-0">
+          <div className="w-10 h-10 border border-zinc-800/80 bg-zinc-900/40 text-zinc-100 rounded-full flex items-center justify-center font-mono font-bold text-sm leading-none shadow-[0_0_16px_rgba(0,0,0,0.3)]">
             {initial}
           </div>
         </div>
 
-        <nav className="w-full space-y-2">
+        <div className="border-t border-zinc-800/40 -mx-4 -mr-6" />
+
+        <nav className="w-full space-y-1.5 mt-6">
           <SidebarLink
             href="/admin/registry"
             icon={<Layers size={20} />}
@@ -48,27 +51,31 @@ export function SystemSidebar() {
         </nav>
       </div>
 
-      <div className="w-full space-y-2 pt-4 border-t border-zinc-900/40">
-        <Link
-          href="/"
-          className="flex items-center gap-4 cursor-pointer text-zinc-400 hover:text-zinc-100 transition-all duration-300 p-4 w-full rounded-2xl hover:bg-zinc-900/20 group"
-        >
-          <div className="min-w-[24px] flex justify-center group-hover:-translate-y-0.5 transition-transform">
-            <Home size={20} />
-          </div>
-          <span className="text-[11px] font-bold uppercase tracking-[0.2em] whitespace-nowrap">
-            Home
-          </span>
-        </Link>
+      <div className="flex flex-col w-full">
+        <div className="border-t border-zinc-800/40 -mx-4 -mr-6" />
 
-        <button className="flex items-center gap-4 cursor-pointer text-zinc-400 hover:text-zinc-100 transition-all duration-300 p-4 w-full rounded-2xl hover:bg-zinc-900/20 group">
-          <div className="min-w-[24px] flex justify-center group-hover:rotate-12 transition-transform">
-            <LogOut size={20} />
-          </div>
-          <span className="text-[11px] font-bold uppercase tracking-[0.2em] whitespace-nowrap">
-            Logout
-          </span>
-        </button>
+        <div className="w-full space-y-1.5 mt-6">
+          <Link
+            href="/"
+            className="flex items-center gap-2 cursor-pointer text-zinc-400 hover:text-zinc-200 transition-all duration-300 py-3 pr-3 pl-2 w-full rounded-2xl hover:bg-zinc-900/30 group"
+          >
+            <div className="min-w-[24px] flex justify-center group-hover:-translate-y-0.5 transition-transform">
+              <Home size={20} />
+            </div>
+            <span className="text-[11px] font-bold uppercase tracking-[0.2em] whitespace-nowrap">
+              Home
+            </span>
+          </Link>
+
+          <button className="flex items-center gap-2 cursor-pointer text-zinc-400 hover:text-zinc-200 transition-all duration-300 py-3 pr-3 pl-2 w-full rounded-2xl hover:bg-zinc-900/30 group bg-transparent border-none text-left p-0 outine-none">
+            <div className="min-w-[24px] flex justify-center group-hover:rotate-12 transition-transform">
+              <LogOut size={20} />
+            </div>
+            <span className="text-[11px] font-bold uppercase tracking-[0.2em] whitespace-nowrap">
+              Logout
+            </span>
+          </button>
+        </div>
       </div>
     </aside>
   );
@@ -85,11 +92,11 @@ function SidebarLink({ href, icon, label, active = false }: SidebarLinkProps) {
   return (
     <Link
       href={href}
-      className={`flex items-center gap-4 cursor-pointer p-4 rounded-2xl transition-all duration-500 relative w-full
+      className={`flex items-center gap-2 cursor-pointer py-3 pr-3 pl-2 rounded-2xl transition-all duration-500 relative w-full
       ${
         active
-          ? "text-zinc-100 bg-zinc-800/40 border border-zinc-700/40 shadow-[0_0_16px_rgba(0,0,0,0.2)]"
-          : "text-zinc-400 hover:text-zinc-100 hover:bg-zinc-900/20 border border-transparent"
+          ? "text-zinc-100 bg-zinc-800/40 border border-zinc-700/40 shadow-[0_0_12px_rgba(0,0,0,0.2)]"
+          : "text-zinc-400 hover:text-zinc-200 hover:bg-zinc-900/20 border border-transparent"
       }
     `}
     >
@@ -98,7 +105,7 @@ function SidebarLink({ href, icon, label, active = false }: SidebarLinkProps) {
         {label}
       </span>
       {active && (
-        <div className="absolute left-2 w-1 h-4 bg-zinc-300 rounded-full" />
+        <div className="absolute left-0 w-1 h-4 bg-zinc-200 rounded-full" />
       )}
     </Link>
   );
