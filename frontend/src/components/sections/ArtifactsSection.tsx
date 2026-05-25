@@ -1,28 +1,35 @@
 "use client";
 
-import React, { useState, useMemo } from "react";
+import React, { useRef } from "react";
 import { ARTIFACT_FEED } from "@/types";
 import { FilterBar } from "@/components/shared/FilterBar";
 import { MasonryGrid } from "@/components/cards/MasonryGrid";
+import { useDebounce } from "@/hooks/useDebounce";
+import { useSmoothScroll } from "@/hooks/useSmoothScroll";
+import { useSearch } from "@/hooks/useSearch";
 
 export function ArtifactsSection() {
-  const [searchQuery, setSearchQuery] = useState("");
+  const sectionRef = useRef<HTMLDivElement>(null);
+  const { query, updateSearch } = useSearch();
+  const debouncedQuery = useDebounce(query, 500);
 
-  const filteredArtifacts = useMemo(() => {
-    return ARTIFACT_FEED.filter((item) => {
-      const query = searchQuery.toLowerCase();
-      return (
-        item.title.toLowerCase().includes(query) ||
-        item.snippet.toLowerCase().includes(query) ||
-        item.category.toLowerCase().includes(query)
-      );
-    });
-  }, [searchQuery]);
+  useSmoothScroll(sectionRef as React.RefObject<HTMLElement>, query);
+
+  const filteredArtifacts = ARTIFACT_FEED.filter((item) => {
+    const q = debouncedQuery.toLowerCase();
+    return (
+      item.title.toLowerCase().includes(q) ||
+      item.snippet.toLowerCase().includes(q) ||
+      item.category.toLowerCase().includes(q)
+    );
+  });
 
   return (
-    <div className="w-full px-6 md:px-12 mt-16 relative z-30 flex flex-col gap-8">
-      {/* FilterBar inner paddings are removed so it flushes edge-to-edge here */}
-      <FilterBar searchQuery={searchQuery} onSearchChange={setSearchQuery} />
+    <div
+      ref={sectionRef}
+      className="w-full px-6 md:px-12 mt-16 relative z-30 flex flex-col gap-8"
+    >
+      <FilterBar value={query} onChange={updateSearch} />
 
       <div className="w-full pb-24">
         {filteredArtifacts.length > 0 ? (
