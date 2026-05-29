@@ -7,6 +7,8 @@ type Post struct {
 	CreatedBy       int       `json:"created_by"`
 	CategoryID      int       `json:"category_id"`
 	LastModifiedBy  int       `json:"last_modified_by"`
+	IsPermanent     bool      `json:"is_permanent"`
+	AspectRatio     string    `json:"aspect_ratio"`
 	LikeCount       int       `json:"like_count"`
 	Title           string    `json:"title"`
 	Content         string    `json:"content"`
