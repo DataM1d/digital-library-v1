@@ -4,6 +4,7 @@ import { ImageUploadZone } from "@/app/admin/ImageUploadZone";
 import { ArtifactForm } from "@/app/upload/artifactForm";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import Image from "next/image";
 
 export default function UploadPage() {
   const router = useRouter();
@@ -19,13 +20,19 @@ export default function UploadPage() {
 
       <header className="flex justify-between items-center mb-12 relative z-10 pl-2">
         <h1 className="font-mono text-2xl uppercase tracking-tighter">
-          New Artifact
+          Upload Artifact
         </h1>
         <button
           onClick={() => router.back()}
-          className="text-md text-zinc-500 hover:text-white underline "
+          className="cursor-pointer transition-transform hover:scale-110 active:scale-95 duration-200"
         >
-          Cancel
+          <Image
+            src="/svg/home.svg"
+            alt="Back"
+            width={26}
+            height={26}
+            className="opacity-60 hover:opacity-100 transition-opacity"
+          />
         </button>
       </header>
 
@@ -33,7 +40,9 @@ export default function UploadPage() {
         <div className="h-[600px] w-full">
           <ImageUploadZone onFileSelect={setFile} />
         </div>
-        <ArtifactForm />
+        <div className="h-[600px] w-full">
+          <ArtifactForm />
+        </div>
       </div>
     </main>
   );
