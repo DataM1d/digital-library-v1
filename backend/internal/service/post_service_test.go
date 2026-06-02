@@ -2,22 +2,29 @@ package service_test
 
 import (
 	"context"
+	"io"
 	"testing"
 
 	"github.com/DataM1d/digital-library/internal/domain"
 	"github.com/DataM1d/digital-library/internal/models"
 	"github.com/DataM1d/digital-library/internal/service"
-	"github.com/gin-gonic/gin"
 )
 
-type MockImageService struct{}
+type MockImageService struct {
+	OnSave func(r io.Reader, filename string) (string, string, error)
+}
 
-func (m *MockImageService) SaveUploadedFile(c *gin.Context) (string, string, error) {
+func (m *MockImageService) Save(r io.Reader, filename string) (string, string, error) {
+	if m.OnSave != nil {
+		return m.OnSave(r, filename)
+	}
 	return "", "", nil
 }
+
 func (m *MockImageService) GenerateBlurHash(path string) (string, error) {
 	return "L6PZfSa_d6%ir[jtE1V@~pCarrW-", nil
 }
+
 func (m *MockImageService) CleanupOrphanedFiles(ctx context.Context, urls []string) (int, error) {
 	return 0, nil
 }
@@ -83,6 +90,7 @@ func (m *MockPostRepo) Update(ctx context.Context, p *models.Post) error {
 	}
 	return nil
 }
+
 func (m *MockPostRepo) Delete(ctx context.Context, id int) error                  { return nil }
 func (m *MockPostRepo) GetByID(ctx context.Context, id int) (*models.Post, error) { return nil, nil }
 func (m *MockPostRepo) GetBySlug(ctx context.Context, s string, id int) (*models.Post, error) {
