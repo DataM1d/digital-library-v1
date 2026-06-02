@@ -7,6 +7,24 @@ import { isAxiosError } from "axios";
 
 type AuthMode = "login" | "register";
 
+const ERROR_DIAGNOSTICS: Record<string, string> = {
+  ERR_INVALID_AUTH_TOKEN: "AUTHENTICATION_FAILED: KEY_REJECTED",
+  ERR_USER_NOT_FOUND: "IDENTITY_NOT_FOUND: CHECK_REGISTRY",
+  ERR_RATE_LIMIT: "PROTOCOL_LOCKDOWN: TOO_MANY_ATTEMPTS",
+  ERR_DB_CONNECTION: "SYSTEM_CRITICAL: DATABASE_UNREACHABLE",
+};
+
+const formatAuthError = (err: unknown): string => {
+  if (isAxiosError(err)) {
+    const rawError = err.response?.data?.error || "Authentication failed";
+    return ERROR_DIAGNOSTICS[rawError] || `VERIFICATION FAILED: ${rawError}`;
+  }
+  if (err instanceof Error) {
+    return err.message;
+  }
+  return "An unexpected error occurred";
+};
+
 export function useAuthForm(mode: AuthMode) {
   const { login, register } = useAuth();
   const [isLoading, setIsLoading] = useState(false);
@@ -44,14 +62,7 @@ export function useAuthForm(mode: AuthMode) {
         await login(credentials);
       }
     } catch (err) {
-      if (isAxiosError(err)) {
-        const apiError = err.response?.data?.error || "Authentication failed";
-        setError(apiError);
-      } else if (err instanceof Error) {
-        setError(err.message);
-      } else {
-        setError("An unexpected error occurred");
-      }
+      setError(formatAuthError(err));
     } finally {
       setIsLoading(false);
     }

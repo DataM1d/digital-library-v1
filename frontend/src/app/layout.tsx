@@ -19,7 +19,7 @@ export default function RootLayout({
       >
         <QueryProvider>
           <AuthProvider>
-            <main className="w-full min-h-screen">{children}</main>
+            <main className="w-full min-h-screen pt-0">{children}</main>
           </AuthProvider>
         </QueryProvider>
       </body>

@@ -1,45 +1,70 @@
 "use client";
 
-import React from "react";
+import React, { useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
+import { useAuthInternal } from "@/hooks/useAuthInternal";
+import { UploadModal } from "@/components/modals/UploadModal";
 
 export function HeaderNavbar() {
+  const { user } = useAuthInternal();
+  const [isUploadOpen, setIsUploadOpen] = useState(false);
+
   return (
-    <div className="flex w-full items-baseline select-none px-6 md:px-12 py-4 transition-all duration-300">
-      <Link href="/" className="flex items-baseline group shrink-0">
-        <div className="relative w-12 h-8 flex items-center justify-center transition-transform duration-200 group-hover:scale-105 self-center">
-          <Image
-            src="/svg/logo.svg"
-            alt="Archive Identity Mark"
-            fill
-            priority
-            className="object-contain"
-          />
-        </div>
-
-        <span className="font-mono text-[22px] mr-2 mt-3 tracking-tight uppercase text-[var(--text-bright)] group-hover:opacity-85 transition-opacity font-semibold">
-          ARCHIVE
-        </span>
-      </Link>
-
-      <div className="shrink-0 ml-auto hidden md:block">
-        <Link
-          href="/login"
-          className="font-mono text-[16px] tracking-widest uppercase text-[var(--text-muted)] hover:text-[var(--text-bright)] transition-colors flex items-baseline gap-1 group font-bold"
-        >
-          <span>Login</span>
-
-          <div className="relative w-5 h-4 transition-transform duration-200 group-hover:scale-105 self-center">
+    <div className="w-full flex flex-col">
+      <div className="flex w-full items-center px-6 py-6 transition-all duration-300">
+        <Link href="/" className="flex items-center group shrink-0">
+          <div className="relative w-10 h-6 flex items-center justify-center">
             <Image
-              src="/svg/user.svg"
-              alt="User Account Icon"
+              src="/svg/logo.svg"
+              alt="Archive Mark"
               fill
-              className="object-contain brightness-90 group-hover:brightness-100 transition-all"
+              priority
+              className="object-contain"
             />
           </div>
+          <span className="font-mono text-xl ml-3 tracking-[0.02em] uppercase text-white font-medium">
+            ARCHIVE
+          </span>
         </Link>
+
+        <div className="ml-auto flex items-center gap-6">
+          {user?.role === "admin" && (
+            <Link
+              href="/upload"
+              className="font-mono text-[11px] text-zinc-300 hover:text-white uppercase tracking-[0.2em] transition-colors"
+            >
+              + Add Post
+            </Link>
+          )}
+
+          {user?.role === "admin" && (
+            <div className="h-3 w-[1px] bg-zinc-700" />
+          )}
+
+          <Link
+            href={user ? "/admin" : "/login"}
+            className="flex items-center gap-3 font-mono text-[11px] uppercase text-zinc-300 hover:text-white transition-colors tracking-[0.2em]"
+          >
+            {user ? user.username : "Login"}
+            <div className="relative w-4 h-4">
+              <Image
+                src="/svg/user.svg"
+                alt="User"
+                fill
+                className="object-contain brightness-100"
+              />
+            </div>
+          </Link>
+        </div>
+
+        <UploadModal
+          isOpen={isUploadOpen}
+          onClose={() => setIsUploadOpen(false)}
+        />
       </div>
+
+      <div className="w-full h-[1px] bg-gradient-to-r from-zinc-700 via-zinc-800 to-transparent" />
     </div>
   );
 }

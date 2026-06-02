@@ -96,21 +96,22 @@ export function useAuthInternal() {
     },
     [handleAuthSuccess],
   );
-
   const register = useCallback(
     async (payload: RegisterPayload) => {
       try {
-        const res = await api.auth.register(payload);
-        await handleAuthSuccess(res);
+        await api.auth.register(payload);
+        toast.success(
+          "Account initialized! Please sign in with your credentials.",
+        );
+        router.push("/login");
       } catch (err) {
         if (isAxiosError(err)) {
           toast.error(err.response?.data?.error || "Registration failed");
         }
-
         throw err;
       }
     },
-    [handleAuthSuccess],
+    [router],
   );
 
   const logout = useCallback(() => {

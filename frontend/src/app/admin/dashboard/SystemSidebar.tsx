@@ -4,29 +4,22 @@ import React, { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Layers, Activity, LogOut, Home } from "lucide-react";
+import { useAuthInternal } from "@/hooks/useAuthInternal";
 
 export function SystemSidebar() {
   const pathname = usePathname();
+  const { logout, user } = useAuthInternal();
   const [initial, setInitial] = useState<string>("A");
 
   useEffect(() => {
-    const storedUser = localStorage.getItem("user");
-    if (storedUser) {
-      try {
-        const parsed = JSON.parse(storedUser);
-        if (parsed?.username) {
-          setInitial(parsed.username.charAt(0).toUpperCase());
-        }
-      } catch (e) {
-        console.error(e);
-      }
+    if (user?.username) {
+      setInitial(user.username.charAt(0).toUpperCase());
     }
-  }, []);
+  }, [user]);
 
   return (
     <aside className="fixed left-0 top-0 bottom-0 w-64 backdrop-blur-xl z-50 pb-6 pl-4 pr-6 flex flex-col justify-between border-r border-zinc-800/40 select-none pt-0">
       <div className="flex flex-col w-full">
-        {/* Top section height calibrated to align perfectly with the Registry Header line */}
         <div className="flex items-center justify-center w-full h-[80px] flex-shrink-0">
           <div className="w-10 h-10 border border-zinc-800/80 bg-zinc-900/40 text-zinc-100 rounded-full flex items-center justify-center font-mono font-bold text-sm leading-none shadow-[0_0_16px_rgba(0,0,0,0.3)]">
             {initial}
@@ -67,7 +60,10 @@ export function SystemSidebar() {
             </span>
           </Link>
 
-          <button className="flex items-center gap-2 cursor-pointer text-zinc-400 hover:text-zinc-200 transition-all duration-300 py-3 pr-3 pl-2 w-full rounded-2xl hover:bg-zinc-900/30 group bg-transparent border-none text-left p-0 outine-none">
+          <button
+            onClick={logout}
+            className="flex items-center gap-2 cursor-pointer text-zinc-400 hover:text-zinc-200 transition-all duration-300 py-3 pr-3 pl-2 w-full rounded-2xl hover:bg-zinc-900/30 group bg-transparent border-none text-left p-0 outline-none"
+          >
             <div className="min-w-[24px] flex justify-center group-hover:rotate-12 transition-transform">
               <LogOut size={20} />
             </div>

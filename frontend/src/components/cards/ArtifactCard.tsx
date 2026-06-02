@@ -64,10 +64,6 @@ export function ArtifactCard({ artifact }: ArtifactCardProps) {
             <p className="font-sans text-[12px] leading-relaxed text-zinc-300 line-clamp-3 font-light tracking-normal">
               {artifact.snippet}
             </p>
-
-            <span className="font-mono text-[9px] text-zinc-600 uppercase tracking-widest mt-3">
-              // REF_{artifact.id.slice(0, 5)}
-            </span>
           </div>
         </Link>
       )}

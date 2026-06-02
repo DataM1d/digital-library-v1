@@ -1,159 +1,46 @@
 @import "tailwindcss";
 
-@layer base {
-  :root {
-    /* 1. Archive Palette - Base HSL */
-    /* Warm Stone Background */
-    --background-hsl: 40 5% 98%;
-    --background: hsl(var(--background-hsl));
+@theme {
+  --font-sans: var(--font-sans);
+  --font-mono: var(--font-mono);
+  --font-serif: var(--font-serif);
 
-    /* Deep Ink Foreground */
-    --foreground-hsl: 240 6% 10%;
-    --foreground: hsl(var(--foreground-hsl));
+  --color-background: #08080a;
+  --color-surface: #000000;
+  --color-surface-card: #121214;
 
-    /* Paper Surfaces */
-    --surface-hsl: 0 0% 100%;
-    --surface: hsl(var(--surface-hsl));
-    --surface-muted: hsl(60 4% 92%);
+  --color-search-bg: #5f5a5a25;
+  --color-search-bg-hover: #2a2a2a84;
+  --color-search-bg-focus: #090911;
 
-    /* 2. Text Tones */
-    --text-primary: hsl(0, 0%, 75%);
-    --text-muted: hsl(240, 5%, 45%);
-    --text-soft: hsl(240 5% 70%);
-    --text-accent: hsl(234 89% 64%);
+  --color-search-placeholder: #a1a1aa;
+  --color-search-icon: #e4e4e7;
+  --color-search-border: #3f3f46;
+  --color-search-border-focus: #fafafa;
+  --color-search-text-focus: #ffffff;
 
-    /* 3. Borders (The 'Grid' visibility fix) */
-    --border: hsl(240 6% 88%);
-    --border-strong: hsl(240 6% 82%);
+  --color-border: #222226;
+  --color-border-muted: #141417;
 
-    /* Geometry */
-    --radius-xs: 1px;
-    --radius-sm: 2px;
-    --radius-md: 4px;
+  --color-text-bright: #e2dbdb;
+  --color-text-muted: #b1b1b1;
+  --color-text-dim: #e3dadadb;
 
-    /* Shadows */
-    --shadow-soft: 0 2px 12px -2px rgba(0, 0, 0, 0.04);
-
-    /* Typography */
-    --font-sans: "Inter", -apple-system, sans-serif;
-    --font-mono: "JetBrains Mono", monospace;
-    --font-serif: "Newsreader", "Playfair Display", serif;
-
-    --ease-out-expo: cubic-bezier(0.19, 1, 0.22, 1);
-  }
-
-  * {
-    border-color: var(--border);
-    -webkit-font-smoothing: antialiased;
-  }
-
-  *::selection {
-    background-color: var(--foreground);
-    color: var(--surface);
-  }
-
-  body {
-    background-color: var(--background);
-    color: var(--text-primary);
-    font-family: var(--font-sans);
-    letter-spacing: -0.01em;
-    overflow-x: hidden;
-  }
-
-  h1 {
-    font-family: var(--font-serif);
-    font-style: italic;
-    font-size: clamp(48px, 8vw, 92px);
-    font-weight: 300;
-    line-height: 0.95;
-    letter-spacing: -0.04em;
-    color: var(--text-primary);
-  }
-
-  h2 {
-    font-family: var(--font-serif);
-    font-style: italic;
-    font-size: 28px;
-    font-weight: 400;
-    letter-spacing: -0.02em;
-    color: var(--text-primary);
-  }
-
-  p {
-    font-size: 16px;
-    line-height: 1.6;
-    color: var(--text-muted);
-  }
-
-  .meta {
-    font-family: var(--font-mono);
-    font-size: 10px;
-    font-weight: 700;
-    letter-spacing: 0.2em;
-    text-transform: uppercase;
-    color: var(--text-soft);
-  }
-
-  ::-webkit-scrollbar {
-    width: 4px;
-  }
-
-  ::-webkit-scrollbar-track {
-    background: var(--background);
-  }
-
-  ::-webkit-scrollbar-thumb {
-    background: var(--border-strong);
-  }
+  --tracking-widest: 0.25em;
+  --tracking-wider: 0.18em;
 }
 
-@layer utilities {
-  /* This ensures the cards stand out against the Stone background */
-  .surface-artifact {
-    background-color: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: var(--radius-xs);
-    box-shadow: var(--shadow-soft);
-    transition: all 0.6s var(--ease-out-expo);
-  }
+:root {
+  --background: #08080a;
+  --text-bright: #e2dbdb;
+}
 
-  .surface-artifact:hover {
-    border-color: var(--border-strong);
-    transform: translateY(-2px);
-    box-shadow: 0 12px 30px -10px rgba(0, 0, 0, 0.08);
-  }
-
-  .section-container {
-    max-width: 1800px;
-    margin: 0 auto;
-    padding: 0 4rem;
-  }
-
-  .divider-subtle {
-    height: 1px;
-    width: 100%;
-    background: linear-gradient(to right, var(--border), transparent);
-  }
-
-  .archive-grid {
-    column-count: 1;
-    column-gap: 3rem; /* Increased gap for breathing room */
-  }
-
-  @media (min-width: 768px) {
-    .archive-grid {
-      column-count: 2;
-    }
-  }
-
-  @media (min-width: 1440px) {
-    .archive-grid {
-      column-count: 3;
-    }
-  }
-
-  .archive-item {
-    break-inside: avoid;
-    margin-bottom: 3rem;
-  }
+body {
+  background-color: var(--background);
+  color: var(--text-bright);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  overflow-x: hidden;
+  /* Ensures smooth transition for the whole page if necessary */
+  scroll-behavior: smooth;
 }
