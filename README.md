@@ -1,86 +1,121 @@
-`The Digital Archive`: Full Stack Engineering Showcase
+Digital Library Frontend & Admin Interface
 
-A high performance, production ready digital library ecosystem. This project demonstrates a transition from a standard `MVC` to a `Domain Driven Onion Architecture` in Go, paired with a modern Next.js 16 frontend that prioritizes type safety, memory efficiency, and strict Zod contract synchronization.
+This repository serves as the administrative and user facing frontend for the Digital Library. Built with Next.js (App Router), the interface is designed as an archival workstation, prioritizing data density, typographic hierarchy, and system level feedback over decorative flair. It is the visual terminal through which the backend's Go powered architecture is curated.
 
-Architectural Engineering Highlights.
+Technology Stack
+Framework: Next.js (App Router)
 
-1. Domain Driven Onion Architecture (New):
-   Migrated the entire backend to a decoupled Service Interface architecture. By defining core logic in a central domain layer, the business rules remain independent of the database (PostgreSQL) and the transport layer (Echo/Gin).
+Styling: Tailwind CSS (Custom Blueprint Design System)
 
-   Impact: Facilitated 100% unit test coverage via dependency injection and mock repositories
+API Layer: Axios with Zod runtime validation
 
-   Context Safety: Implemented full `context.Context` propagation from the HTTP handoff down to the SQL driver, ensuring zero orphaned database processes.
+State Management: TanStack Query
 
-2. linear Time Recursive Comment Trees:
-   Developed a pointerstable, 3 pass map algorithm to transform flat SQL result sets into deeply nested JSON comment threads.
+Form Handling: React Hook Form
 
-   Performance: Reduced complexity from $O(n^2)$ (recursive lookups) to $O(n)$ (linear hash map).
+Utilities: Lucide React, Framer adjacent custom hooks (debounce, scroll, blur loading)
 
-   Impact: Avoided expensive Recursive CTEs in SQL, handling the heavy lifting in Go's memory efficient heap.
+Architectural Design:
+The frontend is built on three core pillars:
 
-3. High Performance Slug Engine (GO):
-   Replaced expensive regex heavy logic with a manual single pass `strings.Builder` implementation.
+1. Defensive API Client: By centralizing networking in lib/api/client.ts, all incoming data is validated at runtime against Zod schemas. This ensures that even if the Go backend returns unexpected data, the frontend treats it with a fallback strategy rather than throwing runtime errors.
 
-   Security: Integrated blueMonday for UGC (User Generated Content) sanitization and Bcrypt for truncation-safe password hashing.
+2. Blueprint Aesthetics: The design language utilizes a strict typographic system (Inter, JetBrains Mono, Newsreader) and a dark themed, blueprint inspired visual palette. This is reinforced through custom layout shells and transparent backdrop effects that distinguish operational (admin) areas from public (registry) areas.
 
-4. Next.js 16 & React 19 Integration (The "Bleeding Edge")
-   One of the first implementations of the Next.js 16 App Router paired with React 19.
+3. Algorithmic UI: Instead of relying on rigid, third party masonry libraries, the MasonryGrid uses a custom height weight distribution algorithm. This allows for precise control over column balancing and layout rendering performance, ensuring the archive remains responsive regardless of image dimensions.
 
-   Hydration Resillience: Custom `useAuth` hooks utilize a Mounted State pattern to prevent SSR mismatch when accessing `localstorage`.
+Key Modules
+The Auth Engine
+Authentication is handled through a specialized Context Hook pattern (useAuthInternal). This engine manages token persistence, window.storage event synchronization to detect multi tab logout, and error diagnostics that map standard API failures to system level status codes (e.g., ERR_INVALID_AUTH_TOKEN).
 
-   Contract First Validation: Every API response is piped through `Zod Schemas` at the network boundary, ensuring the frontend never attempts to render corrupt or incomplete data.
+Post Management & Media
+The editor system uses react hook form and zod to create a strict contract with the backend. Image processing is coupled with client side previews and memory safe URL.createObjectURL management to maintain smooth performance while handling binary data.
 
-Tech Stack.
+Registry System
+The registry view uses debounced searching and custom smooth scrolling logic. By separating the RegistryRoot from RegistryItem, the interface maintains a modular hierarchy where complex data fetching logic remains decoupled from individual artifact rendering.
 
-Backend: Go (1.22+).
-   Framework: Echo / Gin (Optimized with custom JSON binding).
+Core Features
 
-   Architecture: Domain-Driven Design (DDD) with Repository Pattern.
+1. Schema First Data Flow: Every API response is parsed through a Zod schema before hitting the state. This creates a type safe bridge between the Go backend structs and the React components.
 
-   Security: JWT v5, BlueMonday, Bcrypt, Token Bucket Rate Limiting. 
+2. Async Operational Feedback: The system uses optimistic UI patterns for actions like "liking" posts and provides granular feedback for long running processes (e.g., image uploads with progress callbacks).
 
-Frontend: Next.Js (16) & React 19.
-   Core: App Router, Server Components, and Custom Hooks.
+3. Memory Integrity: Heavy use of useEffect cleanup functions (especially in the image preview and blur load hooks) prevents memory leaks a critical requirement for an application that handles high frequency image asset interaction.
 
-   State/Validation: TanStack Query & Zod.
+4. Role Based Routing: The interface dynamically adapts based on the user's session role, gating administrative features like the Create and Edit pipelines directly at the layout level.
 
-   UI/UX: Tailwind CSS v4, Framer Motion, Lucide Icons.
+This project is a high performance backend for a digital library, built with Go. It focuses on clean architecture, separating HTTP concerns from business logic. The system is designed to handle artifacts, user authentication, and media processing efficiently.
 
-   Media: Custom Image Fallback system with BlurHash support.
+The backend follows a layered architecture pattern:
 
-Roadmap & Progress
-[Phase 1] Core Synchronization (Completed)
-- [x] Context Hardening: Full context propagation for request lifecycle management.
-- [x] Domain Refactor: Decoupled Handlers, Services, and Repositories via interfaces.
-- [x] Repository Layer: Refactored PostRepository for zero-pointer string scanning.
-- [x] API Wrapper: Standardized `utils.Response` for consistent Data/Meta/Error structures.
+1. Handlers: Manage HTTP routing, parameter extraction and JSON responses, they act as the boundary between the web client and the system logic.
 
-[Phase 2] Frontend Intelligence (In Progress)
-- [x] Zod Integration: Runtime validation for all archival endpoints.
-- [x] Auth Persistence: Automated `Authorization: Bearer` injection via interceptors.
-- [x] Optimistic UI: Transition Like/Comment mutations to TanStack Query.
+2. Services: House the business logic. These are framework agnostic, meaning they do not import Ging. This makes the code highly testable and reusable.
 
-[Phase 3] Advanced Visualization (Upcoming)
-- [ ] The Spatial Archive: A 3D "Vault" view using React Three Fiber.
-- [ ] Real time Sync: WebSockets for live comment thread updates.
+3. Repositories: Handle direct database communication using PostgreSQL and pgx.
 
-Installation & Setup
-1. Backend
-cp .env.example .env 
+4. Domain: Defines the interfaces, ensuring loose coupling between layers.
 
-psql -d digital_library -f scripts/seed.sql
-go run cmd/api/main.go
+The Image Service Refactor.
+I recently completed a major refactor of the image handling pipeline. Previously, the service layer was tightly coupled to the Gin framework because it accepted a \*gin.Context to extract files.
 
-2. Frontend
-cd frontend 
+I decoupled this by changin the ImageService.Save method signature to acceptan io.Reader and a filename string.
+
+This change provides several advantages:
+
+1. Framework Independence: The service layer no longer cares if it is being called by a Gin handler, a CLI tool or a background worker.
+
+2. Improved Testability: I can now test the image saving logic by passing a bytes.Buffer containing dummy data, rather than mocking a complex HTTP context.
+
+3. Memory Efficienct: By using io.Copy and streaming the file, the system avoids loading large images into memory.
+
+Core Features
+
+1. Automated Slug Normalization: Titles are converted to URL frinedly slugs using Unicode normalization.
+
+2. Async Processing: BLurHash generation runs in a goroutine to keep API response times fast.
+
+3. Transactional Integrity: Comples creation steps involving tags and database entreies are wrapped in transactions to prevent partial data states.
+
+4. Security: Middleware handles JWT validation, and the service layer enforces role based access before database operations occur.
+
+Technology Stack:
+Language: Go
+
+Web Framework: Gin
+
+Database: PostgreSQL with pgx/v5
+
+Authentication: JWT
+
+Media Processing: BlurHash for visual placeholders
+
+Security: Bcrypt for password hashing
+
+Key Features:
+
+Setup
+Configure the environment variables:
+
+Bash
+NEXT_PUBLIC_API_URL=http://localhost:8080
+Install dependencies:
+
+Bash
 npm install
+Run the development server:
+
+Bash
 npm run dev
+Directory Structure
+app/admin/: Administrative routes, layout, and control center logic.
 
-Dev Note: The "Turbopack Panic" Resolution
-   During development on React 19, a low level Rust panic was identified in the Turbopack build engine. This was resolved by:
+app/upload/: Dedicated artifact ingestion interface.
 
-   Reverting to the stable Webpack based dev server (next dev).
+components/: Modular UI components (Cards, Modals, Navigation).
 
-   Clearing corrupted task aggregation caches (rm -rf .next).
+hooks/: Business logic abstractions (Debounce, Storage, API wrappers).
 
-   Configuring next.config.ts to allow upstream images from private local IPs.
+lib/api/: The defensive network layer including client config and schemas.
+
+types/: Shared TypeScript definitions matching the backend models.
