@@ -3,6 +3,7 @@ package handlers
 import (
 	"bytes"
 	"context"
+	"io"
 	"mime/multipart"
 	"net/http"
 	"net/http/httptest"
@@ -26,17 +27,12 @@ type MockPostService struct {
 }
 
 type MockImageService struct {
-	OnSaveUploadedFile func(c *gin.Context) (string, string, error)
+	OnSave func(r io.Reader, filename string) (string, string, error)
 }
 
-func (m *MockImageService) SaveUploadedFile(c *gin.Context) (string, string, error) {
-	if m.OnSaveUploadedFile != nil {
-		return m.OnSaveUploadedFile(c)
-	}
-	// Default behavior: check if image file exists
-	_, _, err := c.Request.FormFile("image")
-	if err != nil {
-		return "", "", err
+func (m *MockImageService) Save(r io.Reader, filename string) (string, string, error) {
+	if m.OnSave != nil {
+		return m.OnSave(r, filename)
 	}
 	return "", "", nil
 }
@@ -122,7 +118,7 @@ func TestPostHandler_CreatePost(t *testing.T) {
 		}
 
 		mockImageService := &MockImageService{
-			OnSaveUploadedFile: func(c *gin.Context) (string, string, error) {
+			OnSave: func(r io.Reader, filename string) (string, string, error) {
 				return "uploads/test.png", "/tmp/test.png", nil
 			},
 		}

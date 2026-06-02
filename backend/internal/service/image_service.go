@@ -13,8 +13,9 @@ import (
 	"path/filepath"
 	"time"
 
+	"bytes"
+
 	"github.com/bbrks/go-blurhash"
-	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 )
 
@@ -26,43 +27,46 @@ func NewImageService(uploadDir string) *imageService {
 	return &imageService{uploadDir: uploadDir}
 }
 
-func (s *imageService) SaveUploadedFile(c *gin.Context) (string, string, error) {
-	file, header, err := c.Request.FormFile("image")
-	if err != nil {
-		return "", "", err
-	}
-	defer file.Close()
-
+func (s *imageService) Save(r io.Reader, filename string) (string, string, error) {
+	
 	// Detect content type
 	buff := make([]byte, 512)
-	_, _ = file.Read(buff)
-	_, _ = file.Seek(0, 0)
-	contentType := http.DetectContentType(buff)
-	allowedTypes := map[string]bool{"image/jpeg": true, "image/png": true, "image/webp": true}
-
-	if !allowedTypes[contentType] {
-		return "", "", fmt.Errorf("invalid image format: %s", contentType)
-	}
-
-	ext := filepath.Ext(header.Filename)
-	fileName := fmt.Sprintf("%d-%s%s", time.Now().Unix(), uuid.New().String(), ext)
-	path := filepath.Join(s.uploadDir, fileName)
-
-	if err := os.MkdirAll(s.uploadDir, 0755); err != nil {
+	n, err := r.Read(buff)
+	if err != nil && err != io.EOF {
 		return "", "", err
 	}
-
-	dst, err := os.Create(path)
-	if err != nil {
-		return "", "", err
-	}
-	defer dst.Close()
-
-	if _, err := io.Copy(dst, file); err != nil {
-		return "", "", err
+	
+	fullReader := io.MultiReader(bytes.NewReader(buff[:n]), r)
+	contentType := http.DetectContentType(buff[:n])
+	allowedTypes := map[string]bool{
+		"image/jpeg": true,
+		"image/png":  true,
+		"image/webp":  true,
 	}
 
-	return "/uploads/" + fileName, path, nil
+if !allowedTypes[contentType] {
+        return "", "", fmt.Errorf("invalid image format: %s", contentType)
+    }
+
+	ext := filepath.Ext(filename)
+    fileName := fmt.Sprintf("%d-%s%s", time.Now().Unix(), uuid.New().String(), ext)
+    path := filepath.Join(s.uploadDir, fileName)
+
+    if err := os.MkdirAll(s.uploadDir, 0755); err != nil {
+        return "", "", err
+    }
+
+    dst, err := os.Create(path)
+    if err != nil {
+        return "", "", err
+    }
+    defer dst.Close()
+
+	if _, err := io.Copy(dst, fullReader); err != nil {
+        return "", "", err
+    }
+
+    return "/uploads/" + fileName, path, nil
 }
 
 func (s *imageService) GenerateBlurHash(imagePath string) (string, error) {

@@ -23,13 +23,6 @@ func NewPostHandler(ps domain.PostService, is domain.ImageService) *PostHandler 
 	}
 }
 
-func stringPtr(s string) *string {
-	if s == "" {
-		return nil
-	}
-	return &s
-}
-
 func (h *PostHandler) CreatePost(c *gin.Context) {
 	ctx := c.Request.Context()
 	role := c.GetString("role")
@@ -41,7 +34,14 @@ func (h *PostHandler) CreatePost(c *gin.Context) {
 		return
 	}
 
-	url, localPath, err := h.imageService.SaveUploadedFile(c)
+	file, header, err := c.Request.FormFile("image")
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Image file is required"})
+		return
+	}
+	defer file.Close()
+
+	url, localPath, err := h.imageService.Save(file, header.Filename)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
@@ -110,8 +110,10 @@ func (h *PostHandler) UpdatePost(c *gin.Context) {
 		BlurHash:       existingPost.BlurHash,
 	}
 
-	if _, _, err := c.Request.FormFile("image"); err == nil {
-		url, localPath, saveErr := h.imageService.SaveUploadedFile(c)
+	file, header, err := c.Request.FormFile("image")
+	if err == nil {
+		defer file.Close()
+		url, localPath, saveErr := h.imageService.Save(file, header.Filename)
 		if saveErr == nil {
 			post.ImageURL = url
 			go h.postService.UpdateBlurHashAsync(localPath, post.ID)
@@ -214,5 +216,3 @@ func (h *PostHandler) GetMyLikedPosts(c *gin.Context) {
 	}
 	c.JSON(http.StatusOK, posts)
 }
-
-
