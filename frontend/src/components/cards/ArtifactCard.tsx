@@ -3,17 +3,7 @@
 import React from "react";
 import Link from "next/link";
 import Image from "next/image";
-
-export interface Artifact {
-  id: string;
-  title: string;
-  slug: string;
-  category: string;
-  imageUrl?: string;
-  aspectRatio: "portrait" | "landscape" | "square";
-  heightWeight: number;
-  snippet: string;
-}
+import { Artifact } from "@/types";
 
 interface ArtifactCardProps {
   artifact: Artifact;

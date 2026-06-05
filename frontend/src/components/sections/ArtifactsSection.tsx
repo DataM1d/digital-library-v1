@@ -1,28 +1,22 @@
 "use client";
 
 import React, { useRef } from "react";
-import { ARTIFACT_FEED } from "@/types";
+import { mapPostToArtifact } from "@/utils/adapter";
 import { FilterBar } from "@/components/shared/FilterBar";
 import { MasonryGrid } from "@/components/cards/MasonryGrid";
-import { useDebounce } from "@/hooks/useDebounce";
+import { usePosts } from "@/hooks/usePosts";
 import { useSmoothScroll } from "@/hooks/useSmoothScroll";
 import { useSearch } from "@/hooks/useSearch";
 
 export function ArtifactsSection() {
   const sectionRef = useRef<HTMLDivElement>(null);
   const { query, updateSearch } = useSearch();
-  const debouncedQuery = useDebounce(query, 500);
+
+  const { posts, isLoading } = usePosts();
 
   useSmoothScroll(sectionRef as React.RefObject<HTMLElement>, query);
 
-  const filteredArtifacts = ARTIFACT_FEED.filter((item) => {
-    const q = debouncedQuery.toLowerCase();
-    return (
-      item.title.toLowerCase().includes(q) ||
-      item.snippet.toLowerCase().includes(q) ||
-      item.category.toLowerCase().includes(q)
-    );
-  });
+  const artifacts = posts.map(mapPostToArtifact);
 
   return (
     <div
@@ -32,12 +26,16 @@ export function ArtifactsSection() {
       <FilterBar value={query} onChange={updateSearch} />
 
       <div className="w-full pb-24">
-        {filteredArtifacts.length > 0 ? (
-          <MasonryGrid items={filteredArtifacts} />
+        {isLoading ? (
+          <div className="w-full py-16 flex justify-center items-center border border-dashed border-zinc-900/60 rounded-xl">
+            <span className="font-sans text-sm text-zinc-500">Loading...</span>
+          </div>
+        ) : artifacts.length > 0 ? (
+          <MasonryGrid items={artifacts} />
         ) : (
-          <div className="w-full py-24 flex justify-center items-center border border-dashed border-zinc-900/60 rounded-xl">
-            <span className="font-mono text-[11px] tracking-widest text-zinc-500 uppercase">
-              // ERROR: NO MATCHING RUNTIME RECORDS FOUND
+          <div className="w-full py-16 flex justify-center items-center border border-dashed border-zinc-900/60 rounded-xl">
+            <span className="font-sans text-sm text-zinc-500">
+              Try adjusting your search or check back later for new discoveries.
             </span>
           </div>
         )}
