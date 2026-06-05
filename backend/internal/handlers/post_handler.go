@@ -50,10 +50,23 @@ func (h *PostHandler) CreatePost(c *gin.Context) {
 	categoryID, _ := strconv.Atoi(c.PostForm("category_id"))
 	tagNames := c.PostFormArray("tags")
 
+	metaDescription := c.PostForm("meta_description")
+	ogImage := c.PostForm("og_image")
+
 	altText := c.PostForm("alt_text")
 	var altTextPtr *string
 	if altText != "" {
 		altTextPtr = &altText
+	}
+
+	var metaDescPointer *string
+	if metaDescription != "" {
+		metaDescPointer = &metaDescription
+	}
+	
+	var ogImagePointer *string	
+	if ogImage != "" {
+		ogImagePointer = &ogImage
 	}
 
 	post := models.Post{
@@ -64,6 +77,8 @@ func (h *PostHandler) CreatePost(c *gin.Context) {
 		BlurHash:   "processing",
 		Status:     c.DefaultPostForm("status", "published"),
 		AltText:    altTextPtr,
+		MetaDescription: metaDescPointer,
+		OGImage: ogImagePointer,
 		CreatedBy:  userID,
 	}
 
@@ -92,10 +107,24 @@ func (h *PostHandler) UpdatePost(c *gin.Context) {
 	categoryID, _ := strconv.Atoi(c.PostForm("category_id"))
 	tagNames := c.PostFormArray("tags")
 
+	metaDescription := c.PostForm("meta_description")
+	ogImage := c.PostForm("og_image")
+
+
 	altText := c.PostForm("alt_text")
 	var altTextPtr *string
 	if altText != "" {
 		altTextPtr = &altText
+	}
+
+	var metaDescPointer *string
+	if metaDescription != "" {
+		metaDescPointer = &metaDescription
+	}
+
+	var ogImagePointer *string
+	if ogImage != "" {
+		ogImagePointer = &ogImage
 	}
 
 	post := models.Post{
@@ -108,6 +137,8 @@ func (h *PostHandler) UpdatePost(c *gin.Context) {
 		LastModifiedBy: userID,
 		ImageURL:       existingPost.ImageURL,
 		BlurHash:       existingPost.BlurHash,
+		MetaDescription: metaDescPointer,
+		OGImage: ogImagePointer,
 	}
 
 	file, header, err := c.Request.FormFile("image")
