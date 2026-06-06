@@ -2,7 +2,6 @@ package middleware
 
 import (
 	"net/http"
-	"os"
 	"strings"
 
 	"github.com/DataM1d/digital-library/pkg/utils"
@@ -29,16 +28,11 @@ func AuthMiddleware() gin.HandlerFunc {
 		tokenString := parts[1]
 		claims := &utils.Claims{}
 
-		secret := os.Getenv("JWT_SECRET")
-		if secret == "" {
-			secret = "default_secret_change_me_in_prod"
-		}
-
 		token, err := jwt.ParseWithClaims(tokenString, claims, func(token *jwt.Token) (interface{}, error) {
 			if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
 				return nil, jwt.ErrSignatureInvalid
 			}
-			return []byte(secret), nil
+			return []byte(utils.GetJWTKey()), nil
 		})
 
 		if err != nil || !token.Valid {
