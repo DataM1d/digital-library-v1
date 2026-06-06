@@ -68,8 +68,10 @@ func main() {
 	r.Use(middleware.CORSMiddleware())
 	r.Use(middleware.SecurityMiddleware())
 	r.Use(middleware.RateLimitMiddleware())
+	r.Use(middleware.BodyLimit(15 << 20))
 
-	r.MaxMultipartMemory = 8 << 20
+
+	r.MaxMultipartMemory = 15 << 20
 	if _, err := os.Stat("./uploads"); os.IsNotExist(err) {
 		os.MkdirAll("./uploads", 0755)
 	}
