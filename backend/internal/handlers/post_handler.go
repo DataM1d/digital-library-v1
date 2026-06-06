@@ -28,12 +28,6 @@ func (h *PostHandler) CreatePost(c *gin.Context) {
 	role := c.GetString("role")
 	userID := c.GetInt("user_id")
 
-	const maxFileSize = 10 << 20
-	if err := c.Request.ParseMultipartForm(maxFileSize); err != nil {
-		c.JSON(http.StatusRequestEntityTooLarge, gin.H{"error": "Payload too large"})
-		return
-	}
-
 	file, header, err := c.Request.FormFile("image")
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Image file is required"})
@@ -52,8 +46,8 @@ func (h *PostHandler) CreatePost(c *gin.Context) {
 
 	metaDescription := c.PostForm("meta_description")
 	ogImage := c.PostForm("og_image")
-
 	altText := c.PostForm("alt_text")
+
 	var altTextPtr *string
 	if altText != "" {
 		altTextPtr = &altText
@@ -70,16 +64,16 @@ func (h *PostHandler) CreatePost(c *gin.Context) {
 	}
 
 	post := models.Post{
-		Title:      c.PostForm("title"),
-		Content:    c.PostForm("content"),
-		CategoryID: categoryID,
-		ImageURL:   url,
-		BlurHash:   "processing",
-		Status:     c.DefaultPostForm("status", "published"),
-		AltText:    altTextPtr,
+		Title:           c.PostForm("title"),
+		Content:         c.PostForm("content"),
+		CategoryID:      categoryID,
+		ImageURL:        url,
+		BlurHash:        "processing",
+		Status:          c.DefaultPostForm("status", "published"),
+		AltText:         altTextPtr,
 		MetaDescription: metaDescPointer,
-		OGImage: ogImagePointer,
-		CreatedBy:  userID,
+		OGImage:         ogImagePointer,
+		CreatedBy:       userID,
 	}
 
 	if err = h.postService.CreateLibraryEntry(ctx, &post, tagNames, role, userID); err != nil {
@@ -106,12 +100,10 @@ func (h *PostHandler) UpdatePost(c *gin.Context) {
 
 	categoryID, _ := strconv.Atoi(c.PostForm("category_id"))
 	tagNames := c.PostFormArray("tags")
-
 	metaDescription := c.PostForm("meta_description")
 	ogImage := c.PostForm("og_image")
-
-
 	altText := c.PostForm("alt_text")
+
 	var altTextPtr *string
 	if altText != "" {
 		altTextPtr = &altText
@@ -128,17 +120,17 @@ func (h *PostHandler) UpdatePost(c *gin.Context) {
 	}
 
 	post := models.Post{
-		ID:             existingPost.ID,
-		Title:          c.PostForm("title"),
-		Content:        c.PostForm("content"),
-		CategoryID:     categoryID,
-		Status:         c.PostForm("status"),
-		AltText:        altTextPtr,
-		LastModifiedBy: userID,
-		ImageURL:       existingPost.ImageURL,
-		BlurHash:       existingPost.BlurHash,
+		ID:              existingPost.ID,
+		Title:           c.PostForm("title"),
+		Content:         c.PostForm("content"),
+		CategoryID:      categoryID,
+		Status:          c.PostForm("status"),
+		AltText:         altTextPtr,
+		LastModifiedBy:  userID,
+		ImageURL:        existingPost.ImageURL,
+		BlurHash:        existingPost.BlurHash,
 		MetaDescription: metaDescPointer,
-		OGImage: ogImagePointer,
+		OGImage:         ogImagePointer,
 	}
 
 	file, header, err := c.Request.FormFile("image")
