@@ -54,7 +54,7 @@ export function ImageUploadZone({
     onDrop,
     accept: { "image/*": [".jpeg", ".png", ".webp"] },
     multiple: false,
-    maxSize: 5242880,
+    maxSize: 15 * 1024 * 1024,
   });
 
   const clearFile = (e: MouseEvent) => {
@@ -135,7 +135,7 @@ function UploadPlaceholder({
         DROP ARTIFACT HERE
       </p>
       <p className="mt-2 text-[12px] uppercase tracking-widest font-bold text-zinc-500">
-        JPG, PNG, WEBP (MAX. 5MB)
+        JPG, PNG, WEBP (MAX. 15MB)
       </p>
     </div>
   );
