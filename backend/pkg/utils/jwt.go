@@ -13,7 +13,7 @@ type Claims struct {
 	jwt.RegisteredClaims
 }
 
-func getJWTKey() []byte {
+func GetJWTKey() []byte {
 	secret := os.Getenv("JWT_SECRET")
 	if secret == "" {
 		return []byte("default_fallback_secret_change_in_production")
@@ -37,5 +37,5 @@ func GenerateToken(userID int, role string) (string, error) {
 	}
 
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
-	return token.SignedString(getJWTKey())
+	return token.SignedString(GetJWTKey())
 }
