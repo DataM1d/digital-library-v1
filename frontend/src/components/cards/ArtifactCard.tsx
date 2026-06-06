@@ -20,7 +20,7 @@ export function ArtifactCard({ artifact }: ArtifactCardProps) {
     <div className="w-full group transition-all duration-300 flex flex-col mb-1 select-none">
       {artifact.imageUrl && (
         <Link
-          href={`/fragments/${artifact.slug}`}
+          href={`/posts/${artifact.slug}`}
           className="block relative overflow-hidden w-full rounded-lg bg-zinc-950"
         >
           <div
