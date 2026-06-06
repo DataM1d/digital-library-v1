@@ -1,7 +1,6 @@
 "use client";
 
-import { ImageUploadZone } from "@/app/admin/ImageUploadZone";
-import { ArtifactForm } from "@/app/upload/artifactForm";
+import { ArtifactForm } from "@/app/upload/ArtifactForm";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import Image from "next/image";
@@ -37,9 +36,6 @@ export default function UploadPage() {
       </header>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-12 max-w-full mx-auto relative z-10 items-start">
-        <div className="h-[600px] w-full">
-          <ImageUploadZone onFileSelect={setFile} />
-        </div>
         <div className="h-[600px] w-full">
           <ArtifactForm />
         </div>
