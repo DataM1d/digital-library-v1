@@ -17,10 +17,10 @@ export function usePostDetail(slug: string) {
       if (!slug) return;
       try {
         setLoading(true);
-        const response = await api.posts.slug(slug);
+        const post = await api.posts.slug(slug);
 
         if (isMounted) {
-          setPost(response.data);
+          setPost(post);
           setError(null);
         }
       } catch (err: unknown) {
