@@ -21,11 +21,11 @@ export const postsApi = {
     ),
 
   slug: (slug: string) =>
-    request<{ data: Post }>(
+    request<Post>(
       {
         url: `posts/s/${slug}`,
       },
-      z.object({ data: PostSchema }),
+      PostSchema,
     ),
 
   like: (id: number | string) =>
