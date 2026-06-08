@@ -9,12 +9,18 @@ interface ArtifactCardProps {
   artifact: Artifact;
 }
 
+const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
+
 export function ArtifactCard({ artifact }: ArtifactCardProps) {
   const aspectVariants = {
     portrait: "aspect-[3/4]",
     landscape: "aspect-[16/10]",
     square: "aspect-square",
   };
+
+  const imageUrl = artifact.imageUrl?.startsWith("http")
+    ? artifact.imageUrl
+    : `${API_URL}${artifact.imageUrl}`;
 
   return (
     <div className="w-full group transition-all duration-300 flex flex-col mb-1 select-none">
@@ -27,7 +33,7 @@ export function ArtifactCard({ artifact }: ArtifactCardProps) {
             className={`relative w-full ${aspectVariants[artifact.aspectRatio]}`}
           >
             <Image
-              src={artifact.imageUrl}
+              src={imageUrl}
               alt={artifact.title}
               fill
               sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
@@ -36,9 +42,9 @@ export function ArtifactCard({ artifact }: ArtifactCardProps) {
           </div>
 
           <div
-            className="absolute inset-0 bg-gradient-to-t from-zinc-950 via-zinc-950/70 to-transparent 
+            className="absolute inset-0 bg-gradient-to-t from-zinc-950 via-zinc-950/70 to-transparent
                        opacity-0 group-hover:opacity-100 translate-y-2 group-hover:translate-y-0
-                       transition-all duration-500 ease-out 
+                       transition-all duration-500 ease-out
                        flex flex-col justify-end p-5 pointer-events-none"
           >
             <div className="flex items-baseline justify-between w-full border-b border-zinc-800/50 pb-2 mb-2.5">
