@@ -9,7 +9,7 @@ import (
 type UserRepo interface {
 	Create(ctx context.Context, user *models.User) error
 	GetByEmail(ctx context.Context, email string) (*models.User, error)
-	GetByID(ctx context.Context, id int) (*models.User, error)
+	GetAuthInfoByID(ctx context.Context, id int) (*models.User, error)
 }
 
 type UserService interface {
