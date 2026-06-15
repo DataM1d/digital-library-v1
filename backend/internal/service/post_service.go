@@ -34,7 +34,7 @@ func NewPostService(
 }
 
 func (s *postService) CreateLibraryEntry(ctx context.Context, post *models.Post, tagNames []string, userRole string, userID int) error {
-	if userRole != "admin" {
+	if userRole != "author" && userRole != "admin" {
 		return errors.New("unauthorized")
 	}
 
@@ -68,8 +68,13 @@ func (s *postService) CreateLibraryEntry(ctx context.Context, post *models.Post,
 }
 
 func (s *postService) UpdatePost(ctx context.Context, post *models.Post, tagNames []string, userRole string, userID int) error {
-	if userRole != "admin" {
-		return errors.New("unauthorized: system update restricted")
+	existing, err := s.repo.GetAuthInfoByID(ctx, post.ID)
+	if err != nil {
+		return err
+	}
+
+	if userRole != "admin"  && !(userRole == "author" && existing.CreatedBy == userID) {
+		return errors.New("unauthorized")
 	}
 
 	// Use the central sanitizer
@@ -90,6 +95,14 @@ func (s *postService) UpdatePost(ctx context.Context, post *models.Post, tagName
 	})
 }
 
+func (s *postService) GetAuthInfoByID(ctx context.Context, id int) (*models.Post, error) {
+    return s.repo.GetAuthInfoByID(ctx, id)
+}
+
+func (s *postService) GetByID(ctx context.Context, id int) (*models.Post, error) {
+	return s.repo.GetByID(ctx, id)
+}
+
 func (s *postService) GetPostBySlug(ctx context.Context, slug string, currentUserID int) (*models.Post, error) {
 	if slug == "" {
 		return nil, errors.New("identifier required")
@@ -107,7 +120,7 @@ func (s *postService) GetAllPosts(ctx context.Context, category, search string, 
 	offset := (page - 1) * limit
 
 	statusFilter := "published"
-	if userRole == "admin" {
+	if userRole == "admin" || userRole == "author" {
 		statusFilter = ""
 	}
 
@@ -130,10 +143,17 @@ func (s *postService) GetAllPosts(ctx context.Context, category, search string, 
 	return posts, meta, nil
 }
 
-func (s *postService) DeletePost(ctx context.Context, id int, userRole string) error {
-	if userRole != "admin" {
-		return errors.New("unauthorized: purge restricted")
+func (s *postService) DeletePost(ctx context.Context, id int, userRole string, userID int) error {
+	existing, err := s.repo.GetAuthInfoByID(ctx, id)
+	if err != nil {
+		return err
 	}
+
+	if userRole != "admin" &&
+    !(userRole == "author" && existing.CreatedBy == userID) {
+    return errors.New("unauthorized")
+}
+
 	return s.repo.Delete(ctx, id)
 }
 
@@ -166,3 +186,4 @@ func (s *postService) CleanupOrphanedFiles(ctx context.Context) (int, error) {
 	// Logic moved to internal/service/image_service.go
 	return s.imageService.CleanupOrphanedFiles(ctx, activeFiles)
 }
+

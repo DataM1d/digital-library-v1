@@ -98,53 +98,64 @@ func (h *PostHandler) UpdatePost(c *gin.Context) {
 		return
 	}
 
-	categoryID, _ := strconv.Atoi(c.PostForm("category_id"))
 	tagNames := c.PostFormArray("tags")
-	metaDescription := c.PostForm("meta_description")
-	ogImage := c.PostForm("og_image")
-	altText := c.PostForm("alt_text")
 
-	var altTextPtr *string
-	if altText != "" {
-		altTextPtr = &altText
+	post := *existingPost //starting with existing post so everything is preserved
+
+	post.LastModifiedBy = userID//update last modified by regardless of other changes
+
+	if title := c.PostForm("title"); title != "" {
+		post.Title = title
 	}
 
-	var metaDescPointer *string
-	if metaDescription != "" {
-		metaDescPointer = &metaDescription
+	if content := c.PostForm("content"); content != "" {
+		post.Content = content
 	}
 
-	var ogImagePointer *string
-	if ogImage != "" {
-		ogImagePointer = &ogImage
+	if category := c.PostForm("category_id"); category != "" {
+		categoryID, err := strconv.Atoi(category)
+		if err == nil {
+			post.CategoryID = categoryID
+		}
 	}
 
-	post := models.Post{
-		ID:              existingPost.ID,
-		Title:           c.PostForm("title"),
-		Content:         c.PostForm("content"),
-		CategoryID:      categoryID,
-		Status:          c.PostForm("status"),
-		AltText:         altTextPtr,
-		LastModifiedBy:  userID,
-		ImageURL:        existingPost.ImageURL,
-		BlurHash:        existingPost.BlurHash,
-		MetaDescription: metaDescPointer,
-		OGImage:         ogImagePointer,
+	if status := c.PostForm("status"); status != "" {
+		post.Status = status
+	}
+
+	if altText := c.PostForm("alt_text"); altText != "" {
+		post.AltText = &altText
+	}
+
+	if metaDescription := c.PostForm("meta_description"); metaDescription != "" {
+		post.MetaDescription = &metaDescription
+	}
+
+	if ogImage := c.PostForm("og_image"); ogImage != "" {
+		post.OGImage = &ogImage
 	}
 
 	file, header, err := c.Request.FormFile("image")
 	if err == nil {
 		defer file.Close()
+
 		url, localPath, saveErr := h.imageService.Save(file, header.Filename)
 		if saveErr == nil {
+			oldImage := post.ImageURL
+
 			post.ImageURL = url
+			post.BlurHash = "processing"
+
 			go h.postService.UpdateBlurHashAsync(localPath, post.ID)
 
-			if existingPost.ImageURL != "" {
-				_ = os.Remove(filepath.Join(".", existingPost.ImageURL))
+			if oldImage != "" {
+				_ = os.Remove(filepath.Join(".", oldImage))
 			}
 		}
+	}
+
+	if post.Status == "" {
+		post.Status = "published"
 	}
 
 	if err := h.postService.UpdatePost(ctx, &post, tagNames, role, userID); err != nil {
@@ -190,10 +201,15 @@ func (h *PostHandler) GetBySlug(c *gin.Context) {
 func (h *PostHandler) DeletePost(c *gin.Context) {
 	ctx := c.Request.Context()
 	role := c.GetString("role")
-	param := c.Param("id")
+	id, err := strconv.Atoi(c.Param("id"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid post ID"})
+		return
+	}
+
 	userID := c.GetInt("user_id")
 
-	post, err := h.postService.GetPostBySlug(ctx, param, userID)
+	post, err := h.postService.GetAuthInfoByID(ctx, id)
 	if err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "Post not found"})
 		return
@@ -203,7 +219,7 @@ func (h *PostHandler) DeletePost(c *gin.Context) {
 		_ = os.Remove(filepath.Join(".", post.ImageURL))
 	}
 
-	if err := h.postService.DeletePost(ctx, post.ID, role); err != nil {
+	if err := h.postService.DeletePost(ctx, post.ID, role, userID); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}

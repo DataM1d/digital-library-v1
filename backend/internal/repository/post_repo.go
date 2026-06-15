@@ -77,15 +77,24 @@ func (r *PostRepository) SyncTags(ctx context.Context, postID int, tagNames []st
 
 func (r *PostRepository) Update(ctx context.Context, p *models.Post) error {
 	query := `
-        UPDATE posts 
-        SET title = $1, content = $2, image_url = $3, blur_hash = $4, alt_text = $5, 
-            category_id = $6, status = $7, meta_description = $8, og_image = $9, 
-            last_modified_by = $10, updated_at = NOW(), slug = $11
-        WHERE id = $12 AND deleted_at IS NULL`
+    UPDATE posts
+    SET title = $1,
+        content = $2,
+        image_url = $3,
+        blur_hash = $4,
+        alt_text = $5,
+        category_id = $6,
+        status = $7,
+        meta_description = $8,
+        og_image = $9,
+        last_modified_by = $10,
+        updated_at = NOW()
+    WHERE id = $11
+      AND deleted_at IS NULL`
 
 	_, err := r.db.ExecContext(ctx, query,
 		p.Title, p.Content, p.ImageURL, p.BlurHash, p.AltText,
-		p.CategoryID, p.Status, p.MetaDescription, p.OGImage, p.LastModifiedBy, p.Slug, p.ID,
+		p.CategoryID, p.Status, p.MetaDescription, p.OGImage, p.LastModifiedBy, p.ID,
 	)
 	return err
 }
@@ -278,10 +287,72 @@ func (r *PostRepository) GetUserLikedPosts(ctx context.Context, userID int) ([]m
 	return posts, nil
 }
 
-func (r *PostRepository) GetByID(ctx context.Context, id int) (*models.Post, error) {
+func (r *PostRepository) GetAuthInfoByID(ctx context.Context, id int) (*models.Post, error) {
 	var p models.Post
-	err := r.db.QueryRowContext(ctx, `SELECT id, image_url, blur_hash FROM posts WHERE id = $1 AND deleted_at IS NULL`, id).Scan(&p.ID, &p.ImageURL, &p.BlurHash)
+
+	err := r.db.QueryRowContext(
+		ctx,
+		`
+		SELECT id,
+		       created_by,
+		       image_url,
+		       blur_hash
+		FROM posts
+		WHERE id = $1
+		  AND deleted_at IS NULL
+		`,
+		id,
+	).Scan(
+		&p.ID,
+		&p.CreatedBy,
+		&p.ImageURL,
+		&p.BlurHash,
+	)
+
 	return &p, err
+}
+
+func (r *PostRepository) GetByID(ctx context.Context, id int) (*models.Post, error) {
+	query := `
+    SELECT
+			p.id,
+			p.created_by,
+			COALESCE(p.category_id, 0),
+			COALESCE(p.last_modified_by, 0),
+			p.title,
+			p.content,
+			COALESCE(p.image_url, ''),
+			COALESCE(p.blur_hash, ''),
+			p.slug,
+			p.status,
+			p.created_at,
+			p.updated_at
+		FROM posts p
+		WHERE p.id = $1
+		  AND p.deleted_at IS NULL
+	`
+
+	var p models.Post
+
+	err := r.db.QueryRowContext(ctx, query, id).Scan(
+		&p.ID,
+		&p.CreatedBy,
+		&p.CategoryID,
+		&p.LastModifiedBy,
+		&p.Title,
+		&p.Content,
+		&p.ImageURL,
+		&p.BlurHash,
+		&p.Slug,
+		&p.Status,
+		&p.CreatedAt,
+		&p.UpdatedAt,
+	)
+
+	if err != nil {
+		return nil, err
+	}
+	return &p, nil
 }
 
 func (r *PostRepository) UpdateBlurHash(ctx context.Context, id int, hash string) error {
