@@ -106,13 +106,24 @@ func main() {
 		}
 
 		admin := api.Group("/admin")
-		admin.Use(middleware.AuthMiddleware(), middleware.AdminOnly())
+		admin.Use(
+			middleware.AuthMiddleware(),
+			middleware.AdminOnly(),
+		)
 		{
-			admin.POST("/posts", postHandler.CreatePost)
-			admin.PUT("/posts/:slug", postHandler.UpdatePost)
-			admin.DELETE("/posts/:id", postHandler.DeletePost)
 			admin.POST("/categories", catHandler.CreateCategory)
 			admin.DELETE("/categories/:id", catHandler.DeleteCategory)
+		}
+
+		author := api.Group("/author")
+		author.Use(
+			middleware.AuthMiddleware(),
+			middleware.AuthorOrAdmin(),
+		)
+		{
+			author.POST("/posts", postHandler.CreatePost)
+			author.PUT("/posts/:slug", postHandler.UpdatePost)
+			author.DELETE("/posts/id/:id", postHandler.DeletePost)
 		}
 	}
 
