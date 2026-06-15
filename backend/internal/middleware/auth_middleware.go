@@ -50,11 +50,39 @@ func AuthMiddleware() gin.HandlerFunc {
 func AdminOnly() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		role, exists := c.Get("role")
+
 		if !exists || role != "admin" {
-			c.JSON(http.StatusForbidden, gin.H{"error": "Access denied: Admin privileges required"})
+			c.JSON(http.StatusForbidden, gin.H{
+				"error": "Admin privileges required",
+			})
 			c.Abort()
 			return
 		}
+
+		c.Next()
+	}
+}
+
+func AuthorOrAdmin() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		role, exists := c.Get("role");
+
+		if !exists {
+			c.JSON(http.StatusForbidden, gin.H{
+				"error": "Authentication required",
+			})
+			c.Abort()
+			return
+		}
+
+		if role != "author" && role != "admin" {
+			c.JSON(http.StatusForbidden, gin.H{
+				"error": "Author priviliges required",
+			})
+			c.Abort()
+			return
+		}
+
 		c.Next()
 	}
 }
