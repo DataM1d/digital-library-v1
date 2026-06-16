@@ -16,7 +16,7 @@ import (
 type MockUserService struct {
 	OnRegister func(ctx context.Context, username, email, password string) (*models.User, error)
 	OnLogin    func(ctx context.Context, email, password string) (string, *models.User, error)
-	OnGetByID  func(ctx context.Context, id int) (*models.User, error)
+	OnGetAuthInfoByID  func(ctx context.Context, id int) (*models.User, error)
 }
 
 func (m *MockUserService) Register(ctx context.Context, u, e, p string) (*models.User, error) {
@@ -27,8 +27,8 @@ func (m *MockUserService) Login(ctx context.Context, e, p string) (string, *mode
 	return m.OnLogin(ctx, e, p)
 }
 
-func (m *MockUserService) GetByID(ctx context.Context, id int) (*models.User, error) {
-	return m.OnGetByID(ctx, id)
+func (m *MockUserService) GetAuthInfoByID(ctx context.Context, id int) (*models.User, error) {
+	return m.OnGetAuthInfoByID(ctx, id)
 }
 
 func TestAuthHandler_Register(t *testing.T) {

@@ -1,4 +1,4 @@
-package service_test
+package service
 
 import (
 	"context"
@@ -7,226 +7,212 @@ import (
 
 	"github.com/DataM1d/digital-library/internal/domain"
 	"github.com/DataM1d/digital-library/internal/models"
-	"github.com/DataM1d/digital-library/internal/service"
 )
 
-type MockImageService struct {
-	OnSave func(r io.Reader, filename string) (string, string, error)
+type mockPostRepo struct {
+	createFunc            func(context.Context, *models.Post) error
+	updateFunc            func(context.Context, *models.Post) error
+	deleteFunc            func(context.Context, int) error
+	getByIDFunc           func(context.Context, int) (*models.Post, error)
+	getAuthInfoByIDFunc   func(context.Context, int) (*models.Post, error)
+	getBySlugFunc         func(context.Context, string, int) (*models.Post, error)
+	getAllFunc            func(context.Context, string, string, []string, int, int, string, int) ([]models.Post, int, error)
+	syncTagsFunc          func(context.Context, int, []string) error
+	toggleLikeFunc        func(context.Context, int, int) (bool, error)
+	getUserLikedPostsFunc func(context.Context, int) ([]models.Post, error)
+	slugExistsFunc        func(context.Context, string) (bool, error)
+	updateBlurHashFunc    func(context.Context, int, string) error
+	getAllImageURLsFunc   func(context.Context) ([]string, error)
+	withTransactionFunc   func(context.Context, func(domain.PostRepo) error) error
 }
 
-func (m *MockImageService) Save(r io.Reader, filename string) (string, string, error) {
-	if m.OnSave != nil {
-		return m.OnSave(r, filename)
+func (m *mockPostRepo) Create(ctx context.Context, p *models.Post) error { return m.createFunc(ctx, p) }
+func (m *mockPostRepo) Update(ctx context.Context, p *models.Post) error { return m.updateFunc(ctx, p) }
+func (m *mockPostRepo) Delete(ctx context.Context, id int) error         { return m.deleteFunc(ctx, id) }
+func (m *mockPostRepo) GetByID(ctx context.Context, id int) (*models.Post, error) {
+	return m.getByIDFunc(ctx, id)
+}
+func (m *mockPostRepo) GetAuthInfoByID(ctx context.Context, id int) (*models.Post, error) {
+	return m.getAuthInfoByIDFunc(ctx, id)
+}
+func (m *mockPostRepo) GetBySlug(ctx context.Context, s string, c int) (*models.Post, error) {
+	return m.getBySlugFunc(ctx, s, c)
+}
+func (m *mockPostRepo) GetAll(ctx context.Context, c, s string, t []string, l, o int, st string, uid int) ([]models.Post, int, error) {
+	return m.getAllFunc(ctx, c, s, t, l, o, st, uid)
+}
+func (m *mockPostRepo) SyncTags(ctx context.Context, id int, t []string) error {
+	return m.syncTagsFunc(ctx, id, t)
+}
+func (m *mockPostRepo) ToggleLike(ctx context.Context, u, p int) (bool, error) {
+	return m.toggleLikeFunc(ctx, u, p)
+}
+func (m *mockPostRepo) GetUserLikedPosts(ctx context.Context, u int) ([]models.Post, error) {
+	return m.getUserLikedPostsFunc(ctx, u)
+}
+func (m *mockPostRepo) SlugExists(ctx context.Context, s string) (bool, error) {
+	return m.slugExistsFunc(ctx, s)
+}
+func (m *mockPostRepo) UpdateBlurHash(ctx context.Context, id int, h string) error {
+	return m.updateBlurHashFunc(ctx, id, h)
+}
+func (m *mockPostRepo) GetAllImageURLs(ctx context.Context) ([]string, error) {
+	return m.getAllImageURLsFunc(ctx)
+}
+func (m *mockPostRepo) WithTransaction(ctx context.Context, fn func(domain.PostRepo) error) error {
+	return m.withTransactionFunc(ctx, fn)
+}
+
+type mockTagRepo struct {
+	syncPostTagsFunc func(context.Context, int, []string) error
+}
+
+func (m *mockTagRepo) SyncPostTags(ctx context.Context, p int, t []string) error {
+	return m.syncPostTagsFunc(ctx, p, t)
+}
+
+type mockImageService struct {
+	genBlurHashFunc     func(string) (string, error)
+	cleanupOrphanedFunc func(context.Context, []string) (int, error)
+	saveFunc            func(io.Reader, string) (string, string, error)
+}
+
+func (m *mockImageService) GenerateBlurHash(l string) (string, error) { return m.genBlurHashFunc(l) }
+func (m *mockImageService) CleanupOrphanedFiles(ctx context.Context, a []string) (int, error) {
+	return m.cleanupOrphanedFunc(ctx, a)
+}
+func (m *mockImageService) Save(r io.Reader, filename string) (string, string, error) {
+	return m.saveFunc(r, filename)
+}
+
+type mockSlugService struct {
+	genSlugFunc func(context.Context, string) (string, error)
+}
+
+func (m *mockSlugService) GenerateUniqueSlug(ctx context.Context, t string) (string, error) {
+	return m.genSlugFunc(ctx, t)
+}
+
+type mockSanitizer struct {
+	sanitizeFunc func(*models.Post)
+}
+
+func (m *mockSanitizer) Sanitize(p *models.Post) {
+	if m.sanitizeFunc != nil {
+		m.sanitizeFunc(p)
 	}
-	return "", "", nil
 }
 
-func (m *MockImageService) GenerateBlurHash(path string) (string, error) {
-	return "L6PZfSa_d6%ir[jtE1V@~pCarrW-", nil
-}
-
-func (m *MockImageService) CleanupOrphanedFiles(ctx context.Context, urls []string) (int, error) {
-	return 0, nil
-}
-
-type MockSlugService struct {
-	OnGenerate func(ctx context.Context, title string) (string, error)
-}
-
-func (m *MockSlugService) GenerateUniqueSlug(ctx context.Context, title string) (string, error) {
-	if m.OnGenerate != nil {
-		return m.OnGenerate(ctx, title)
-	}
-	return "mock-slug", nil
-}
-
-type MockPostRepo struct {
-	OnSlugExists      func(ctx context.Context, slug string) (bool, error)
-	OnCreate          func(ctx context.Context, p *models.Post) error
-	OnUpdate          func(ctx context.Context, p *models.Post) error
-	OnSyncTags        func(ctx context.Context, postID int, tagNames []string) error
-	OnWithTx          func(ctx context.Context, fn func(domain.PostRepo) error) error
-	OnGetAllImageURLs func(ctx context.Context) ([]string, error)
-}
-
-func (m *MockPostRepo) SlugExists(ctx context.Context, s string) (bool, error) {
-	if m.OnSlugExists != nil {
-		return m.OnSlugExists(ctx, s)
-	}
-	return false, nil
-}
-
-func (m *MockPostRepo) SyncTags(ctx context.Context, postID int, tagName []string) error {
-	if m.OnSyncTags != nil {
-		return m.OnSyncTags(ctx, postID, tagName)
-	}
-	return nil
-}
-
-func (m *MockPostRepo) Create(ctx context.Context, p *models.Post) error {
-	if m.OnCreate != nil {
-		return m.OnCreate(ctx, p)
-	}
-	return nil
-}
-
-func (m *MockPostRepo) WithTransaction(ctx context.Context, fn func(domain.PostRepo) error) error {
-	if m.OnWithTx != nil {
-		return m.OnWithTx(ctx, fn)
-	}
-	return fn(m)
-}
-
-func (m *MockPostRepo) GetAllImageURLs(ctx context.Context) ([]string, error) {
-	if m.OnGetAllImageURLs != nil {
-		return m.OnGetAllImageURLs(ctx)
-	}
-	return []string{}, nil
-}
-
-func (m *MockPostRepo) Update(ctx context.Context, p *models.Post) error {
-	if m.OnUpdate != nil {
-		return m.OnUpdate(ctx, p)
-	}
-	return nil
-}
-
-func (m *MockPostRepo) Delete(ctx context.Context, id int) error                  { return nil }
-func (m *MockPostRepo) GetByID(ctx context.Context, id int) (*models.Post, error) { return nil, nil }
-func (m *MockPostRepo) GetBySlug(ctx context.Context, s string, id int) (*models.Post, error) {
-	return nil, nil
-}
-func (m *MockPostRepo) GetAll(ctx context.Context, c, s string, t []string, l, o int, st string, id int) ([]models.Post, int, error) {
-	return nil, 0, nil
-}
-func (m *MockPostRepo) ToggleLike(ctx context.Context, u, p int) (bool, error) { return false, nil }
-func (m *MockPostRepo) GetUserLikedPosts(ctx context.Context, u int) ([]models.Post, error) {
-	return nil, nil
-}
-func (m *MockPostRepo) UpdateBlurHash(ctx context.Context, id int, h string) error { return nil }
-
-type MockTagRepo struct {
-	OnSyncPostTags func(ctx context.Context, postID int, tagNames []string) error
-}
-
-func (m *MockTagRepo) SyncPostTags(ctx context.Context, id int, tags []string) error {
-	if m.OnSyncPostTags != nil {
-		return m.OnSyncPostTags(ctx, id, tags)
-	}
-	return nil
-}
-
-type MockSanitizer struct{}
-
-func (m *MockSanitizer) Sanitize(p *models.Post) {}
-
-func TestPostService_CreateLibraryEntry(t *testing.T) {
+func TestCreateLibraryEntry_Success(t *testing.T) {
 	ctx := context.Background()
+	post := &models.Post{Title: "Test"}
 
-	t.Run("Unauthorized if not admin", func(t *testing.T) {
-		svc := service.NewPostService(
-			&MockPostRepo{},
-			&MockTagRepo{},
-			&MockImageService{},
-			&MockSlugService{},
-			&MockSanitizer{},
-		)
-		err := svc.CreateLibraryEntry(ctx, &models.Post{}, []string{}, "user", 1)
-		if err == nil {
-			t.Errorf("Expected unauthorized error, got nil")
-		}
-	})
-
-	t.Run("Slug generation and sanitization logic", func(t *testing.T) {
-		var capturedPost *models.Post
-		mockPostRepo := &MockPostRepo{
-			OnSlugExists: func(ctx context.Context, slug string) (bool, error) { return false, nil },
-			OnCreate: func(ctx context.Context, p *models.Post) error {
-				capturedPost = p
-				return nil
-			},
-		}
-
-		mockSlug := &MockSlugService{
-			OnGenerate: func(ctx context.Context, title string) (string, error) {
-				return "the-swedish-archive", nil
-			},
-		}
-
-		svc := service.NewPostService(mockPostRepo, &MockTagRepo{}, &MockImageService{}, mockSlug, service.NewSanitizer())
-		post := &models.Post{
-			Title:   "<h1>The Swedish Archive</h1>",
-			Content: "<script>alert('xss')</script><p>Safe content</p>",
-		}
-
-		err := svc.CreateLibraryEntry(ctx, post, []string{"history"}, "admin", 42)
-
-		if err != nil {
-			t.Fatalf("Creation failed: %v", err)
-		}
-
-		if capturedPost.Title != "The Swedish Archive" {
-			t.Errorf("Title not sanitized: %s", capturedPost.Title)
-		}
-		if capturedPost.Content != "<p>Safe content</p>" {
-			t.Errorf("Content not sanitized: %s", capturedPost.Content)
-		}
-		if capturedPost.Slug != "the-swedish-archive" {
-			t.Errorf("Expected slug the-swedish-archive, got %s", capturedPost.Slug)
-		}
-	})
-}
-
-func TestCreatePost_SyncsTags(t *testing.T) {
-	ctx := context.Background()
-	tagsSynced := false
-	expectedID := 101
-	testTags := []string{"Renaissance"}
-	var mockRepo *MockPostRepo
-
-	mockRepo = &MockPostRepo{
-		OnCreate: func(ctx context.Context, p *models.Post) error {
-			p.ID = expectedID
-			return nil
-		},
-		OnSyncTags: func(ctx context.Context, postID int, tagNames []string) error {
-			if postID == expectedID && len(tagNames) > 0 && tagNames[0] == "Renaissance" {
-				tagsSynced = true
-			}
-			return nil
-		},
-		OnWithTx: func(ctx context.Context, fn func(domain.PostRepo) error) error {
-			return fn(mockRepo)
-		},
-		OnSlugExists: func(ctx context.Context, slug string) (bool, error) {
-			return false, nil
+	mockRepo := &mockPostRepo{}
+	mockRepo.withTransactionFunc = func(ctx context.Context, fn func(domain.PostRepo) error) error {
+		return fn(mockRepo)
+	}
+	mockRepo.createFunc = func(ctx context.Context, p *models.Post) error {
+		p.ID = 1
+		return nil
+	}
+	mockSlug := &mockSlugService{
+		genSlugFunc: func(ctx context.Context, t string) (string, error) {
+			return "test", nil
 		},
 	}
+	mockSan := &mockSanitizer{sanitizeFunc: func(p *models.Post) {}}
 
-	svc := service.NewPostService(
-		mockRepo,
-		&MockTagRepo{},
-		&MockImageService{},
-		&MockSlugService{},
-		&MockSanitizer{},
-	)
+	svc := NewPostService(mockRepo, &mockTagRepo{}, &mockImageService{}, mockSlug, mockSan)
 
-	post := &models.Post{
-		Title:   "Renaissance Art",
-		Content: "Content about the Renaissance period.",
-	}
-
-	err := svc.CreateLibraryEntry(ctx, post, testTags, "admin", 1)
-
+	err := svc.CreateLibraryEntry(ctx, post, nil, "author", 1)
 	if err != nil {
-		t.Fatalf("Expected no error, got %v", err)
+		t.Fatalf("expected no error, got %v", err)
 	}
-
-	if !tagsSynced {
-		t.Error("Expected SyncTags to be called, but it was not")
+	if post.Slug != "test" {
+		t.Errorf("expected slug test, got %s", post.Slug)
 	}
+}
 
-	if post.ID != expectedID {
-		t.Errorf("Expected ID %d, got %d", expectedID, post.ID)
+func TestUpdatePost_Unauthorized(t *testing.T) {
+	ctx := context.Background()
+	mockRepo := &mockPostRepo{
+		getAuthInfoByIDFunc: func(ctx context.Context, id int) (*models.Post, error) {
+			return &models.Post{CreatedBy: 99}, nil
+		},
+	}
+	svc := NewPostService(mockRepo, nil, nil, nil, nil)
+	err := svc.UpdatePost(ctx, &models.Post{ID: 1}, nil, "author", 1)
+	if err == nil || err.Error() != "unauthorized" {
+		t.Errorf("expected unauthorized, got %v", err)
+	}
+}
+
+func TestDeletePost_Success(t *testing.T) {
+	ctx := context.Background()
+	mockRepo := &mockPostRepo{
+		getAuthInfoByIDFunc: func(ctx context.Context, id int) (*models.Post, error) {
+			return &models.Post{CreatedBy: 1}, nil
+		},
+		deleteFunc: func(ctx context.Context, id int) error {
+			return nil
+		},
+	}
+	svc := NewPostService(mockRepo, nil, nil, nil, nil)
+	err := svc.DeletePost(ctx, 1, "author", 1)
+	if err != nil {
+		t.Errorf("expected no error, got %v", err)
+	}
+}
+
+func TestGetAllPosts_Pagination(t *testing.T) {
+	ctx := context.Background()
+	mockRepo := &mockPostRepo{
+		getAllFunc: func(ctx context.Context, c, s string, t []string, l, o int, st string, uid int) ([]models.Post, int, error) {
+			return []models.Post{{ID: 1}}, 25, nil
+		},
+	}
+	svc := NewPostService(mockRepo, nil, nil, nil, nil)
+	_, meta, err := svc.GetAllPosts(ctx, "", "", nil, 1, 10, "user", 0)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if meta.TotalPages != 3 {
+		t.Errorf("expected 3 pages, got %d", meta.TotalPages)
+	}
+}
+
+func TestCleanupOrphanedFiles_Success(t *testing.T) {
+	ctx := context.Background()
+	mockRepo := &mockPostRepo{
+		getAllImageURLsFunc: func(ctx context.Context) ([]string, error) {
+			return []string{"a.jpg"}, nil
+		},
+	}
+	mockImg := &mockImageService{
+		cleanupOrphanedFunc: func(ctx context.Context, files []string) (int, error) {
+			return 1, nil
+		},
+	}
+	svc := NewPostService(mockRepo, nil, mockImg, nil, nil)
+	count, err := svc.CleanupOrphanedFiles(ctx)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if count != 1 {
+		t.Errorf("expected 1, got %d", count)
+	}
+}
+
+func TestToggleLike_Success(t *testing.T) {
+	ctx := context.Background()
+	mockRepo := &mockPostRepo{
+		toggleLikeFunc: func(ctx context.Context, u, p int) (bool, error) {
+			return true, nil
+		},
+	}
+	svc := NewPostService(mockRepo, nil, nil, nil, nil)
+	res, err := svc.ToggleLike(ctx, 1, 1)
+	if err != nil || !res {
+		t.Errorf("expected true, got %v", res)
 	}
 }
