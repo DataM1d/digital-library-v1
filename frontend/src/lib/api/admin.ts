@@ -1,6 +1,7 @@
 import { request } from "./client";
 import { CategorySchema } from "./schemas";
 import { Category } from "@/types";
+import { z } from "zod";
 
 export const adminApi = {
   createCategory: (name: string) =>
@@ -14,8 +15,11 @@ export const adminApi = {
     ),
 
   deleteCategory: (id: string) =>
-    request<{ message: string }>({
-      url: `/admin/categories/${id}`,
-      method: "DELETE",
-    }),
+    request<{ message: string }>(
+      {
+        url: `/admin/categories/${id}`,
+        method: "DELETE",
+      },
+      z.object({ message: z.string() }),
+    ),
 };
