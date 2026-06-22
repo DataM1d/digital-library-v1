@@ -41,12 +41,12 @@ export interface Post {
 }
 
 export interface PostComment {
-  id: number;
-  post_id: number;
-  user_id: number;
+  id: string;
+  post_id: string;
+  user_id: string;
   username: string;
   content: string;
-  parent_id?: number | null;
+  parent_id?: string | null;
   created_at: string;
   updated_at: string;
   replies?: PostComment[] | null;
