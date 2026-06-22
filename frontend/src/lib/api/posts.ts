@@ -4,6 +4,7 @@ import { PostSchema, PaginatedPostSchema, CategorySchema } from "./schemas";
 import { Post, PaginatedResponse, Category } from "@/types";
 
 export const postsApi = {
+  // Page and limit stay as numbers - these are query instructions, not DB IDs
   list: (
     params: {
       search?: string;
@@ -28,7 +29,8 @@ export const postsApi = {
       PostSchema,
     ),
 
-  like: (id: number | string) =>
+  // ID is now strictly string
+  like: (id: string) =>
     request<{ message: string }>({
       method: "POST",
       url: `user/posts/id/${id}/like`,
@@ -73,7 +75,7 @@ export const postsApi = {
       z.object({ data: PostSchema }),
     ),
 
-  delete: (id: number | string) =>
+  delete: (id: string) =>
     request<{ message: string }>({
       method: "DELETE",
       url: `admin/posts/${id}`,
