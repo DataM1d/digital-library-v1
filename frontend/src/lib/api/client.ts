@@ -1,4 +1,4 @@
-import axios from "axios";
+import axios, { AxiosRequestConfig } from "axios";
 import { z } from "zod";
 
 const API_BASE = (
@@ -46,33 +46,30 @@ apiInstance.interceptors.response.use(
 );
 
 export async function request<T>(
-  config: import("axios").AxiosRequestConfig,
+  config: AxiosRequestConfig,
   schema?: z.ZodSchema<T>,
 ): Promise<T> {
   try {
     const response = await apiInstance(config);
     const data = response.data;
+
     if (schema) {
       const result = schema.safeParse(data);
       if (!result.success) {
-        console.error(
-          `[Zod Validation Error] ${config.method?.toUpperCase()} ${config.url}:`,
-          result.error.format(),
+        throw new Error(
+          `Contract Breach: ${JSON.stringify(result.error.format())}`,
         );
-        return data as T;
       }
       return result.data;
     }
+
     return data;
   } catch (err: unknown) {
     if (axios.isAxiosError(err)) {
       const status = err.response?.status ?? "NETWORK_ERROR";
       const message = err.response?.data?.message || err.message;
-
       console.error(
-        `[API Error] ${config.method?.toUpperCase()} ${config.url}`,
-        `| Status: ${status}`,
-        `| Message: ${message}`,
+        `[API Error] ${config.method?.toUpperCase()} ${config.url} | Status: ${status} | Message: ${message}`,
       );
     } else {
       console.error("[Unexpected Error]:", err);
