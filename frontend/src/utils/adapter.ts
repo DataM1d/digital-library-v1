@@ -1,4 +1,4 @@
-import { Post, Artifact } from "../types";
+import { Post, Artifact } from "@/types";
 
 const tagToLayout: Record<
   string,
@@ -22,7 +22,9 @@ export const mapPostToArtifact = (post: Post): Artifact => {
     weight = config.weight;
   }
 
-  if (post.content.length > 800) weight = Math.min(weight + 1, 4);
+  if (post.content.length > 800) {
+    weight = Math.min(weight + 1, 4);
+  }
 
   return {
     id: post.id,
