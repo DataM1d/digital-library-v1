@@ -41,7 +41,7 @@ export function useComments(postId: string) {
 
     setIsSubmitting(true);
     try {
-      await api.comments.create(postId, content, parentId);
+      await api.comments.create(postId, content, parentId ?? null);
       toast.success("Comment archived successfully");
       await fetchComments();
     } catch (err: unknown) {

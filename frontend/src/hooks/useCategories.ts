@@ -7,9 +7,10 @@ import { Category } from "@/types";
 export function useCategories() {
   const queryClient = useQueryClient();
 
-  const { data, isLoading } = useQuery({
+  const { data, isLoading } = useQuery<Category[]>({
     queryKey: ["categories"],
     queryFn: () => api.posts.categories(),
+    initialData: [],
   });
 
   const addMutation = useMutation({
@@ -27,7 +28,7 @@ export function useCategories() {
   });
 
   return {
-    categories: (data as Category[]) ?? [],
+    categories: data,
     isLoading,
     isSubmitting: addMutation.isPending || deleteMutation.isPending,
     addCategory: async (name: string) => {
