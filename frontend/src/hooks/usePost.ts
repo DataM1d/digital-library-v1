@@ -7,8 +7,8 @@ export function usePost(slug: string) {
   return useQuery({
     queryKey: ["post", slug],
     queryFn: async () => {
-      const res = await api.posts.slug(slug);
-      return res.data;
+      const post = await api.posts.slug(slug);
+      return post;
     },
     enabled: !!slug,
     staleTime: 1000 * 60 * 10,

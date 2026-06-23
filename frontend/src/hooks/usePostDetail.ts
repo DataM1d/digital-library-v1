@@ -1,78 +1,60 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import { Post } from "@/types";
-import { isAxiosError } from "axios";
 
 export function usePostDetail(slug: string) {
-  const [post, setPost] = useState<Post | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const queryClient = useQueryClient();
 
-  useEffect(() => {
-    let isMounted = true;
+  const {
+    data: post,
+    isLoading,
+    error,
+  } = useQuery({
+    queryKey: ["post", slug],
+    queryFn: () => api.posts.slug(slug),
+    enabled: !!slug,
+  });
 
-    async function fetchArtifact() {
-      if (!slug) return;
-      try {
-        setLoading(true);
-        const post = await api.posts.slug(slug);
+  const likeMutation = useMutation({
+    mutationFn: (id: string) => api.posts.like(id),
+    onMutate: async (id) => {
+      await queryClient.cancelQueries({ queryKey: ["post", slug] });
+      const previousPost = queryClient.getQueryData<Post>(["post", slug]);
 
-        if (isMounted) {
-          setPost(post);
-          setError(null);
-        }
-      } catch (err: unknown) {
-        if (isMounted) {
-          const msg = isAxiosError(err)
-            ? err.response?.data?.error || "Archive_Access_Denied"
-            : "System_Link_Failure";
-          setError(msg);
-        }
-      } finally {
-        if (isMounted) setLoading(false);
+      if (previousPost) {
+        queryClient.setQueryData<Post>(["post", slug], {
+          ...previousPost,
+          user_has_liked: !previousPost.user_has_liked,
+          like_count: previousPost.user_has_liked
+            ? previousPost.like_count - 1
+            : previousPost.like_count + 1,
+        });
       }
-    }
-
-    fetchArtifact();
-    return () => {
-      isMounted = false;
-    };
-  }, [slug]);
-
-  const toggleLike = async () => {
-    if (!post) return;
-
-    setPost((prev) =>
-      prev
-        ? {
-            ...prev,
-            user_has_liked: !prev.user_has_liked,
-            like_count: prev.user_has_liked
-              ? prev.like_count - 1
-              : prev.like_count + 1,
-          }
-        : null,
-    );
-
-    try {
-      await api.posts.like(post.id);
-    } catch (err) {
-      setPost((prev) =>
-        prev
-          ? {
-              ...prev,
-              user_has_liked: !prev.user_has_liked,
-              like_count: prev.user_has_liked
-                ? prev.like_count + 1
-                : prev.like_count - 1,
-            }
-          : null,
-      );
+      return { previousPost };
+    },
+    onError: (err, id, context) => {
+      if (context?.previousPost) {
+        queryClient.setQueryData(["post", slug], context.previousPost);
+      }
       console.error("[Feedback_Sync_Error]:", err);
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: ["post", slug] });
+    },
+  });
+
+  const toggleLike = () => {
+    if (post) {
+      likeMutation.mutate(post.id);
     }
   };
 
-  return { post, loading, error, toggleLike };
+  return {
+    post,
+    loading: isLoading,
+    error: error?.message || null,
+    toggleLike,
+  };
 }
