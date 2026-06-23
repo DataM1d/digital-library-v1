@@ -75,6 +75,7 @@ export const PostFormSchema = z.object({
   status: z.enum(["published", "draft"]),
   tags: z.array(z.string()),
   alt_text: z.string().optional(),
+  image: z.instanceof(File).optional(),
 });
 
 export type PostFormData = z.infer<typeof PostFormSchema>;
