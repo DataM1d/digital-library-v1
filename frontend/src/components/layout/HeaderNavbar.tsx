@@ -30,12 +30,12 @@ export function HeaderNavbar() {
 
         <div className="ml-auto flex items-center gap-6">
           {user?.role === "admin" && (
-            <Link
-              href="/upload"
-              className="font-mono text-[11px] text-zinc-300 hover:text-white uppercase tracking-[0.2em] transition-colors"
+            <button
+              onClick={() => setIsUploadOpen(true)}
+              className="font-mono text-[11px] text-zinc-300 hover:text-white uppercase tracking-[0.2em] transition-colors bg-transparent border-none cursor-pointer"
             >
               + Add Post
-            </Link>
+            </button>
           )}
 
           {user?.role === "admin" && (
