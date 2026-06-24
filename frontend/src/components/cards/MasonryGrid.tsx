@@ -1,7 +1,8 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
-import { ArtifactCard, Artifact } from "./ArtifactCard";
+import React, { useEffect, useState, useMemo } from "react";
+import { ArtifactCard } from "./ArtifactCard";
+import { Artifact } from "@/types";
 
 interface MasonryGridProps {
   items: Artifact[];
@@ -33,21 +34,25 @@ export function MasonryGrid({ items }: MasonryGridProps) {
     return () => window.removeEventListener("resize", handleResize);
   }, []);
 
-  const columns: ColumnTrack[] = Array.from({ length: columnCount }, () => ({
-    heightWeight: 0,
-    items: [],
-  }));
+  const columns = useMemo(() => {
+    const cols: ColumnTrack[] = Array.from({ length: columnCount }, () => ({
+      heightWeight: 0,
+      items: [],
+    }));
 
-  items.forEach((item) => {
-    let shortestColumn = columns[0];
-    for (let i = 1; i < columnCount; i++) {
-      if (columns[i].heightWeight < shortestColumn.heightWeight) {
-        shortestColumn = columns[i];
+    items.forEach((item) => {
+      let shortestColumn = cols[0];
+      for (let i = 1; i < columnCount; i++) {
+        if (cols[i].heightWeight < shortestColumn.heightWeight) {
+          shortestColumn = cols[i];
+        }
       }
-    }
-    shortestColumn.items.push(item);
-    shortestColumn.heightWeight += item.heightWeight;
-  });
+      shortestColumn.items.push(item);
+      shortestColumn.heightWeight += item.heightWeight;
+    });
+
+    return cols;
+  }, [items, columnCount]);
 
   return (
     <div className="flex w-full gap-6 px-0 transition-all duration-300">
